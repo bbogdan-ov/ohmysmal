@@ -2,59 +2,74 @@ package handler
 
 import (
 	"log"
-	"ohmysmal/database"
+	"net/http"
+	"reflect"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
+
+	"ohmysmal/consts"
+	"ohmysmal/database"
 )
 
-func (h Handler) HandleApiLogin(c *gin.Context) {
-	err := h.login(c)
-	if err == ErrUserAlreadyAuth {
-		// fallthough
-	} else if err != nil {
-		writeError(c, err)
+func (h Handler) HandleApiLogin(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
 		return
 	}
 
-	writeRedirect(c, "/")
-}
-func (h Handler) HandleApiRegister(c *gin.Context) {
-	err := h.register(c)
+	err := h.login(w, r)
 	if err == ErrUserAlreadyAuth {
 		// fallthough
 	} else if err != nil {
-		writeError(c, err)
+		Error(w, err)
 		return
 	}
 
-	writeRedirect(c, "/")
+	Redirect(w, "/")
 }
-func (h Handler) HandleApiLogout(c *gin.Context) {
-	h.logout(c)
-	writeRedirect(c, "/")
+func (h Handler) HandleApiRegister(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	err := h.register(w, r)
+	if err == ErrUserAlreadyAuth {
+		// fallthough
+	} else if err != nil {
+		Error(w, err)
+		return
+	}
+
+	Redirect(w, "/")
+}
+func (h Handler) HandleApiLogout(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	h.logout(w, r)
+	Redirect(w, "/")
 }
 
-func (h Handler) login(c *gin.Context) (err error) {
+func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	const INVALID_MSG = "Invalid nickname or password."
 
-	session := sessions.Default(c)
+	session := h.DefaultSession(r)
 
 	if _, ok := h.authorizedUser(); ok {
 		return ErrUserAlreadyAuth
 	}
 
 	// Parse received form data.
-	err = c.Request.ParseForm() // nah, i don't want to use the c.Bind()
+	err = r.ParseForm()
 	if err != nil {
 		return BadRequestError{err.Error()}
 	}
 
-	nickname := strings.TrimSpace(c.Request.FormValue("nickname"))
-	password := c.Request.FormValue("password")
+	nickname := strings.TrimSpace(r.FormValue("nickname"))
+	password := r.FormValue("password")
 
 	if nickname == "" {
 		return UserError{"Nickname is required."}
@@ -79,26 +94,26 @@ func (h Handler) login(c *gin.Context) (err error) {
 		return UserError{INVALID_MSG}
 	}
 
-	rememberUser(session, user.Id)
+	rememberUser(w, r, session, user.Id)
 	return nil
 }
 
-func (h Handler) register(c *gin.Context) (err error) {
-	session := sessions.Default(c)
+func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
+	session := h.DefaultSession(r)
 
 	if _, ok := h.authorizedUser(); ok {
 		return ErrUserAlreadyAuth
 	}
 
 	// Parse received form data.
-	err = c.Request.ParseForm()
+	err = r.ParseForm()
 	if err != nil {
 		return BadRequestError{err.Error()}
 	}
 
-	nickname := strings.TrimSpace(c.Request.FormValue("nickname"))
-	password := c.Request.FormValue("password")
-	passwordConfirm := c.Request.FormValue("password-confirm")
+	nickname := strings.TrimSpace(r.FormValue("nickname"))
+	password := r.FormValue("password")
+	passwordConfirm := r.FormValue("password-confirm")
 
 	if nickname == "" {
 		return UserError{"Nickname is required."}
@@ -137,24 +152,28 @@ func (h Handler) register(c *gin.Context) (err error) {
 		return UserError{"This nickname is already taken by someone else :("}
 	}
 
-	// Write user to the database.
-	id, err := database.WriteUser(h.db, nickname, hashedPassword)
+	// Insert user to the database.
+	result, err := h.db.Exec("INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
+	if err != nil {
+		return err
+	}
+	id, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
 
-	rememberUser(session, uint(id))
+	rememberUser(w, r, session, uint(id))
 
 	return nil
 }
 
-func (h Handler) logout(c *gin.Context) {
-	session := sessions.Default(c)
+func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
+	session := h.DefaultSession(r)
 
 	_ = h.cache.Delete(USER_CACHE_KEY) // ignore if not found
 
-	session.Delete(USER_ID_SESSION_KEY)
-	err := session.Save()
+	delete(session.Values, USER_ID_SESSION_KEY)
+	err := session.Save(r, w)
 	if err != nil {
 		log.Printf("ERROR: Failed to save the session: %s", err)
 	}
@@ -164,18 +183,22 @@ func (h Handler) logout(c *gin.Context) {
 // it may be outdated but that's fine i guess.
 func (h Handler) authorizedUser() (user database.User, found bool) {
 	value, found := h.cache.Get(USER_CACHE_KEY)
+	if value == nil {
+		return database.User{}, false
+	}
+
 	user, ok := value.(database.User)
 	if !ok {
-		log.Printf("ERROR: Stored user info in the cache is of an invalid type")
+		log.Printf("ERROR: Stored user info in the cache is of an invalid type (%s)", reflect.TypeOf(value))
 		return database.User{}, false
 	} else {
 		return user, ok
 	}
 }
 
-func rememberUser(session sessions.Session, id uint) {
-	session.Set(USER_ID_SESSION_KEY, id)
-	err := session.Save()
+func rememberUser(w http.ResponseWriter, r *http.Request, session *sessions.Session, id uint) {
+	session.Values[USER_ID_SESSION_KEY] = id
+	err := session.Save(r, w)
 	if err != nil {
 		log.Printf("ERROR: Failed to save the session: %s", err)
 	}
@@ -184,7 +207,7 @@ func rememberUser(session sessions.Session, id uint) {
 // Returns whether a nickname is within the length limit
 // and has only allowed characters.
 func validateNickname(nickname string) (err error) {
-	if utf8.RuneCountInString(nickname) > MAX_NICKNAME_LEN {
+	if utf8.RuneCountInString(nickname) > consts.MAX_NICKNAME_LEN {
 		return ErrNicknameTooLong
 	}
 
@@ -205,6 +228,6 @@ func validateNickname(nickname string) (err error) {
 func validatePassword(password string) bool {
 	const MAX_BCRYPT_LEN = 72
 
-	return utf8.RuneCountInString(password) <= MAX_PASSWORD_LEN &&
+	return utf8.RuneCountInString(password) <= consts.MAX_PASSWORD_LEN &&
 		len([]byte(password)) <= MAX_BCRYPT_LEN
 }

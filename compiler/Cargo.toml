@@ -1,0 +1,10 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+uxnsmal = { git = "https://github.com/bbogdan-ov/uxnsmal" }
+
+[lib]
+crate-type = ["cdylib"]

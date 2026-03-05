@@ -2,12 +2,11 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
 	"ohmysmal/database"
@@ -15,39 +14,36 @@ import (
 )
 
 func main() {
-	router := gin.Default()
-	router.SetTrustedProxies(nil) // do not trust anyone.
-	// Setup the default HTML renderer.
-	htmlRenderer := router.HTMLRender
-	router.HTMLRender = &HTMLTemplRenderer{FallbackHtmlRenderer: htmlRenderer}
-
 	// Setup cache.
-	store := cache.New(time.Second, time.Second*5)
+	cache := cache.New(time.Second, time.Second*5)
+
+	// Setup session storage.
+	store := sessions.NewCookieStore([]byte("secret")) // TODO: pass a secret key through env vars.
 
 	// Setup database.
 	db := database.Connect()
 	defer db.Close()
 
-	h := handler.New(db, store)
-
-	// Setup session storage.
-	cookieStore := cookie.NewStore([]byte("secret")) // TODO: pass a secret key through env vars.
-	router.Use(sessions.Sessions("ohmysmal", cookieStore))
-	router.Use(h.UserCacheMiddleware)
+	h := handler.New(db, cache, store)
 
 	// Handle routes.
-	router.GET("/", h.HandleHome)
-	router.GET("/hey", h.HandleHey)
-	router.POST("/api/login", h.HandleApiLogin)
-	router.POST("/api/logout", h.HandleApiLogout)
-	router.POST("/api/register", h.HandleApiRegister)
-	router.POST("/api/snippet", h.HandleApiSnippet)
-	router.POST("/api/flower/:id", h.HandleApiFlower)
+	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleHome))
+	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleHome))
+	http.HandleFunc("/hey", h.UserCacheMiddleware(h.HandleHey))
 
-	router.Static("/static", "./static")
+	http.HandleFunc("/api/login", h.UserCacheMiddleware(h.HandleApiLogin))
+	http.HandleFunc("/api/logout", h.UserCacheMiddleware(h.HandleApiLogout))
+	http.HandleFunc("/api/register", h.UserCacheMiddleware(h.HandleApiRegister))
+	http.HandleFunc("/api/snippet", h.UserCacheMiddleware(h.HandleApiSnippet))
+	http.HandleFunc("/api/flower/{snippet_id}", h.UserCacheMiddleware(h.HandleApiFlower))
+	http.HandleFunc("/api/comment/{snippet_id}", h.UserCacheMiddleware(h.HandleApiComment))
+
+	static := http.Dir("static")
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(static)))
 
 	// Starting the server.
-	err := router.Run()
+	log.Printf("Listening on :8080")
+	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatalf("Failed to run the server: %s", err)
 	}

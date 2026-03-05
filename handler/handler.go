@@ -3,11 +3,14 @@ package handler
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
 	"ohmysmal/database"
@@ -15,10 +18,9 @@ import (
 )
 
 const (
+	SESSION_NAME        = "ohmysmal"
 	USER_ID_SESSION_KEY = "id"
 	USER_CACHE_KEY      = "user"
-	MAX_PASSWORD_LEN    = 64 // max length of a password in runes (utf8 characters)
-	MAX_NICKNAME_LEN    = 32
 )
 
 var (
@@ -52,17 +54,26 @@ func (e BadRequestError) Error() string {
 type Handler struct {
 	db    *sql.DB
 	cache *cache.Cache
+	store *sessions.CookieStore
 }
 
-func New(db *sql.DB, store *cache.Cache) Handler {
-	return Handler{db, store}
+func New(db *sql.DB, cache *cache.Cache, store *sessions.CookieStore) Handler {
+	return Handler{db, cache, store}
 }
 
 // --------------------
 // Pages
 // --------------------
 
-func (h Handler) HandleHome(c *gin.Context) {
+func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if !EnsureMethod(w, r, "GET") {
+		return
+	}
+
 	user, ok := h.authorizedUser()
 
 	snippets := make([]database.Snippet, 0, 20)
@@ -72,32 +83,77 @@ func (h Handler) HandleHome(c *gin.Context) {
 		// fallthough
 	}
 
-	c.HTML(http.StatusOK, "", view.Home(user, ok, snippets))
+	v := templ.Handler(view.HomePage(user, ok, snippets))
+	v.ServeHTTP(w, r)
 }
-func (h Handler) HandleHey(c *gin.Context) {
-	c.String(http.StatusOK, "hello")
+
+func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
+	v := templ.Handler(view.EditorPage())
+	v.ServeHTTP(w, r)
+}
+
+func (h Handler) HandleHey(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "GET") {
+		return
+	}
+
+	w.Write([]byte("hello"))
 }
 
 // --------------------
 // Utils
 // --------------------
 
+func (h Handler) DefaultSession(r *http.Request) *sessions.Session {
+	s, err := h.store.Get(r, SESSION_NAME)
+	if err != nil {
+		log.Printf("ERROR: Failed to get a session, creating a new one: %s", err)
+		// fallthough
+	}
+	return s
+}
+
+// Parse a path value of type `uint` from a request.
+func UintPathValue(r *http.Request, name string) (uint, error) {
+	str := r.PathValue(name)
+	if str == "" {
+		return 0, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
+	}
+
+	num, err := strconv.ParseUint(str, 10, 32)
+	if err != nil {
+		return 0, BadRequestError{fmt.Sprintf(`param "%s" is of an 'uint': %s`, name, err)}
+	}
+
+	return uint(num), nil
+}
+
+// Returns whether the method in a request is equal to `method`, if not,
+// returns `false` and writes `http.Error()`.
+func EnsureMethod(w http.ResponseWriter, r *http.Request, method string) bool {
+	if r.Method != method {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+	return true
+}
+
 // Write an error message into the response body.
-func writeError(c *gin.Context, err error) {
+func Error(w http.ResponseWriter, err error) {
 	if errors.As(err, &UserError{}) {
 		// Making errors is ok, don't worry <3
-		c.String(http.StatusOK, err.Error())
+		http.Error(w, err.Error(), http.StatusOK)
 	} else if errors.As(err, &BadRequestError{}) {
-		c.String(http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
 		log.Printf("ERROR: Server error: %s", err)
-		c.String(http.StatusInternalServerError, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// Write the "HX-writeRedirect" (HTMX redirect) header the response body. HTMX
+// Write the "HX-Redirect" (HTMX redirect) header the response body. HTMX
 // doesn't know how to work with normal "Location" header.
-func writeRedirect(c *gin.Context, location string) {
-	c.Header("HX-Redirect", location)
-	c.Status(http.StatusMovedPermanently)
+func Redirect(w http.ResponseWriter, location string) {
+	w.Header().Add("HX-Redirect", location)
+	w.WriteHeader(http.StatusMovedPermanently)
 }

@@ -74,8 +74,8 @@ func Connect() *sql.DB {
 	return db
 }
 
-func requestUserWith(db *sql.DB, constraint string, params ...any) (user User, err error) {
-	row := db.QueryRow("SELECT * FROM users_with_enums "+constraint, params...)
+func requestUserWith(db *sql.DB, condition string, params ...any) (user User, err error) {
+	row := db.QueryRow("SELECT * FROM users_with_enums "+condition, params...)
 	err = row.Scan(&user.Id, &user.Nickname, &user.Password, &user.Role, &user.Status)
 
 	if err == sql.ErrNoRows {
@@ -107,20 +107,6 @@ func IsNicknameTaken(db *sql.DB, nickname string) (taken bool, err error) {
 	}
 
 	return true, nil
-}
-
-func WriteUser(db *sql.DB, nickname string, hashedPassword []byte) (id int64, err error) {
-	result, err := db.Exec("INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
-	if err != nil {
-		return 0, err
-	}
-
-	id, err = result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return id, nil
 }
 
 func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUser bool) (count int, err error) {

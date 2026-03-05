@@ -4,20 +4,23 @@ import (
 	"fmt"
 
 	"ohmysmal/database"
+	"ohmysmal/consts"
 )
 
-templ Home(user database.User, exists bool, snippets []database.Snippet) {
-	@page("home", "") {
-		if exists {
-			@profile(user)
-		} else {
-			<div class="flex gap-2">
-				@loginForm()
-				@registerForm()
-			</div>
-		}
+templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
+	@page("home") {
+		<div class="container">
+			if exists {
+				@profile(user)
+			} else {
+				<div class="flex gap-2">
+					@loginForm()
+					@registerForm()
+				</div>
+			}
 
-		@feed(snippets)
+			@feed(snippets)
+		</div>
 	}
 }
 
@@ -33,7 +36,11 @@ templ profile(user database.User) {
 		enctype="multipart/form-data"
 	>
 		<input type="file" name="file" required>
-		<textarea name="description" maxlength="500" style="height: 300px"></textarea>
+		<textarea
+			name="description"
+			maxlength={consts.MAX_SNIPPET_DESCRIPTION_LEN}
+			style="height: 300px"
+		></textarea>
 		<button type="submit">Submit</button>
 		<span id="post-spinner" class="htmx-indicator">wait...</span>
 	</form>
@@ -48,9 +55,25 @@ templ feed(snippets []database.Snippet) {
 }
 templ snippet(s database.Snippet) {
 	<article class="snippet">
-		<p>{ s.Description }</p>
-		<b>{"@"}{ s.AuthorNickname } - { s.AuthorId }</b>
-		@SnippetFlowerButton(s.Id, s.Flowers, s.AuthUserFlowered)
+		<p>{s.Description}</p>
+		<b>{"@"}{s.AuthorNickname} - {s.AuthorId}</b>
+
+		<div class="flex gap-2">
+			@SnippetFlowerButton(s.Id, s.Flowers, s.AuthUserFlowered)
+			<span>{s.Comments} comments</span>
+		</div>
+
+		<form
+			hx-post={ fmt.Sprintf("/api/comment/%d", s.Id) }
+			hx-swap="beforebegin"
+		>
+			<textarea
+				name="text"
+				maxlength={consts.MAX_COMMENT_TEXT_LEN}
+				required
+			></textarea>
+			<button type="submit">submit</button>
+		</form>
 	</article>
 }
 templ SnippetFlowerButton(id uint, n uint, active bool) {
@@ -74,8 +97,20 @@ templ loginForm() {
 		hx-indicator="#login-spinner"
 	>
 		<span id="login-result"></span>
-		<input type="text" name="nickname" placeholder="Nickname" required />
-		<input type="password" name="password" placeholder="Password" required />
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
 		<button type="submit">Login</button>
 		<span id="login-spinner" class="htmx-indicator">wait...</span>
 	</form>
@@ -90,43 +125,70 @@ templ registerForm() {
 		hx-indicator="#register-spinner"
 	>
 		<span id="register-result"></span>
-		<input type="text"     name="nickname"         placeholder="Nickname" required />
-		<input type="password" name="password"         placeholder="Password" required />
-		<input type="password" name="password-confirm" placeholder="Repeat the password" required />
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<input
+			type="password"
+			name="password-confirm"
+			placeholder="Repeat the password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
 		<button type="submit">Register</button>
 		<span id="register-spinner" class="htmx-indicator">wait...</span>
 	</form>
 }
 
 templ Ok(msg string) {
-	<p class="message ok">{ msg }</p>
+	<p class="message ok">{msg}</p>
 }
 templ Error(msg string) {
-	<p class="message error">{ msg }</p>
+	<p class="message error">{msg}</p>
 }
 
-templ page(title string, description string) {
-	if description == "" {
-		{{ description = "become UXN, feel UXN, love UXN" }}
-	}
-
+templ page(title string) {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-		<meta name="description" content={ description }>
+		<meta name="description" content="become UXN, feel UXN, love UXN">
 
 		<link rel="stylesheet" href="static/css/style.css">
+
+		<meta name="htmx-config" content='{"historyEnabled": false}'>
 		<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/htmx-ext-response-targets@2.0.4"></script>
 
-		<title>oh my smal - { title }</title>
+		<title>oh my smal - {title}</title>
 	</head>
 	<body hx-ext="response-targets">
-		<div class="container">
-			{ children... }
-		</div>
+		{children...}
+
+		<!-- <script src="static/js/lib/uxn5/uxn.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/uxn-wasm.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/emu.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/system.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/console.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/controller.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/datetime.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/mouse.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/devices/screen.js"></script> -->
+		<!-- <script src="static/js/lib/uxn5/boot.js"></script> -->
+
+		<!-- <script src="static/js/main.js" type="module"></script> -->
 	</body>
 	</html>
 }

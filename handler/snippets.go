@@ -1,70 +1,75 @@
 package handler
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
+	"unicode/utf8"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
+	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
+	"ohmysmal/consts"
 	"ohmysmal/view"
 )
 
-const (
-	MAX_SNIPPET_FILE_SIZE = 65535 // 65kb
-)
-
-func (h Handler) HandleApiSnippet(c *gin.Context) {
-	err := h.postSnippet(c)
-	if err != nil {
-		writeError(c, err)
+func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
 		return
 	}
 
-	writeRedirect(c, "/")
+	err := h.postSnippet(r)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	Redirect(w, "/")
 }
 
-func (h Handler) HandleApiFlower(c *gin.Context) {
-	snippetId, number, flowered, err := h.flowerSnippet(c)
+func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	snippetId, number, flowered, err := h.flowerSnippet(r)
 	if err != nil {
 		// TODO: when user is not authorized we should show some sort of an
 		// alert that says "hey, you should sign in".
-		writeError(c, err)
+		Error(w, err)
 		return
 	}
 
 	// Send the updated number of flowers back.
-	c.HTML(http.StatusOK, "", view.SnippetFlowerButton(snippetId, number, flowered))
+	v := templ.Handler(view.SnippetFlowerButton(snippetId, number, flowered))
+	v.ServeHTTP(w, r)
 }
 
-func (h Handler) postSnippet(c *gin.Context) (err error) {
-	session := sessions.Default(c)
-
-	// Update the cached user because we need an up-to-date data.
-	h.updateUserCache(session)
-
-	user, ok := h.authorizedUser()
-	if !ok {
+func (h Handler) postSnippet(r *http.Request) (err error) {
+	user, found := h.authorizedUser()
+	if !found {
 		return ErrUserNotAuth
 	}
 
 	// Parse form data.
-	err = c.Request.ParseMultipartForm(MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
+	err = r.ParseMultipartForm(consts.MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
 	if err != nil {
 		return BadRequestError{err.Error()}
 	}
 
 	// TODO: remove repeating whitespaces from the description.
-	description := strings.TrimSpace(c.Request.FormValue("description"))
+	description := strings.TrimSpace(r.FormValue("description"))
 
-	// Store the received file into the server's file system.
-	file, header, err := c.Request.FormFile("file")
+	if utf8.RuneCountInString(description) > consts.MAX_SNIPPET_DESCRIPTION_LEN {
+		return UserError{fmt.Sprintf("Snippet description can't exceed %d characters.", consts.MAX_SNIPPET_DESCRIPTION_LEN)}
+	}
+
+	// Store the received file to the server's file system.
+	file, header, err := r.FormFile("file")
 	if err != nil {
 		return err
 	}
@@ -73,7 +78,7 @@ func (h Handler) postSnippet(c *gin.Context) (err error) {
 		return err
 	}
 
-	// Write snippet into the database.
+	// Insert snippet to the database.
 	stmt, err := h.db.Prepare("INSERT INTO snippets (author_id, filename, description) VALUES (?, ?, ?)")
 	if err != nil {
 		return nil
@@ -91,7 +96,7 @@ func (h Handler) postSnippet(c *gin.Context) (err error) {
 func validateAndWriteFile(file multipart.File, header *multipart.FileHeader) (filename string, err error) {
 	// TODO: check for text file.
 
-	if header.Size > MAX_SNIPPET_FILE_SIZE {
+	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
 		return "", UserError{"Source file is too large! It should not exceed 65KB of size."}
 	}
 
@@ -112,23 +117,27 @@ func validateAndWriteFile(file multipart.File, header *multipart.FileHeader) (fi
 	return filename, nil
 }
 
-func (h Handler) flowerSnippet(c *gin.Context) (snippetId uint, flowers uint, flowered bool, err error) {
+func (h Handler) flowerSnippet(r *http.Request) (snippetId uint, flowers uint, flowered bool, err error) {
 	user, ok := h.authorizedUser()
 	if !ok {
 		return 0, 0, false, ErrUserNotAuth
 	}
 
-	idStr, ok := c.Params.Get("id")
-	if !ok {
-		return 0, 0, false, BadRequestError{"no id is provided"}
-	}
-
-	num, err := strconv.ParseUint(idStr, 10, 32)
-	snippetId = uint(num)
+	// Parse path params.
+	snippetId, err = UintPathValue(r, "snippet_id")
 	if err != nil {
-		return 0, 0, false, BadRequestError{fmt.Sprintf("id param is of an invalid type: %s", err)}
+		return 0, 0, false, err
 	}
 
+	// Request the current number of flowers in the snippet.
+	err = h.db.QueryRow("SELECT flowers FROM snippets WHERE id = ?", snippetId).Scan(&flowers)
+	if err == sql.ErrNoRows {
+		return 0, 0, false, BadRequestError{"no snippet with this id"}
+	} else if err != nil {
+		return 0, 0, false, err
+	}
+
+	// Insert the flower to the database.
 	tx, err := h.db.Begin()
 	if err != nil {
 		return 0, 0, false, err
@@ -152,13 +161,10 @@ func (h Handler) flowerSnippet(c *gin.Context) (snippetId uint, flowers uint, fl
 		}
 
 		flowered = false
+		flowers -= 1
 	} else {
 		flowered = true
-	}
-
-	err = tx.QueryRow("SELECT flowers FROM snippets WHERE id = ?", snippetId).Scan(&flowers)
-	if err != nil {
-		return 0, 0, false, err
+		flowers += 1
 	}
 
 	return snippetId, flowers, flowered, tx.Commit()

@@ -2,23 +2,31 @@ package handler
 
 import (
 	"log"
+	"net/http"
 	"ohmysmal/database"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
 )
 
 // Caches the authorized user info on each request to reduce number of requests to the database.
-func (h Handler) UserCacheMiddleware(c *gin.Context) {
-	if ignoreUrl(c.Request.URL.Path) {
-		return
-	}
+func (h Handler) UserCacheMiddleware(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if ignoreUrl(r.URL.Path) {
+			return
+		}
 
-	session := sessions.Default(c)
-	h.updateUserCache(session)
+		session := h.DefaultSession(r)
+
+		_, found := h.cache.Get(USER_CACHE_KEY)
+		if !found || methodUpdatesCache(r.Method) {
+			h.updateUserCache(w, r, session)
+		}
+
+		handler.ServeHTTP(w, r)
+	}
 }
 
 func ignoreUrl(url string) bool {
@@ -26,8 +34,15 @@ func ignoreUrl(url string) bool {
 		url == "/favicon.ico"
 }
 
-func (h Handler) updateUserCache(session sessions.Session) (err error) {
-	userId := session.Get(USER_ID_SESSION_KEY)
+func methodUpdatesCache(method string) bool {
+	// Any "modifying" method should update the cache to get an up-to-date user info.
+	return method == "POST" || method == "PUT" || method == "DELETE" || method == "PATCH"
+}
+
+// Updates the currently authorized user cache. Cache will be updated even if
+// it is already present or it is not expired yet.
+func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session *sessions.Session) (err error) {
+	userId, _ := session.Values[USER_ID_SESSION_KEY]
 	if userId == nil {
 		return ErrUserNotAuth
 	}
@@ -40,8 +55,8 @@ func (h Handler) updateUserCache(session sessions.Session) (err error) {
 
 	err = h.requestAndCacheUser(id)
 	if err == database.ErrUserNotFound {
-		session.Delete(USER_ID_SESSION_KEY)
-		session.Save()
+		delete(session.Values, USER_ID_SESSION_KEY)
+		_ = session.Save(r, w)
 		// fallthough
 	} else if err != nil {
 		log.Printf("ERROR: Failed to cache authorized user info: %s", err)
@@ -52,12 +67,6 @@ func (h Handler) updateUserCache(session sessions.Session) (err error) {
 }
 
 func (h Handler) requestAndCacheUser(id uint) (err error) {
-	_, found := h.cache.Get(USER_CACHE_KEY)
-	if found {
-		// User is cached, do nothing.
-		return nil
-	}
-
 	user, err := database.RequestUserById(h.db, id)
 	if err != nil {
 		return err

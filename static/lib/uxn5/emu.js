@@ -8,9 +8,8 @@ function poke16(mem, addr, val) {
 	mem[addr] = val >> 8, mem[addr + 1] = val;
 }
 
-function Emu (embed)
+function Emu ()
 {
-	this.embed = embed
 	this.system = new System(this)
 	// TODO: add console output.
 	// this.console = new Console(this)
@@ -27,21 +26,12 @@ function Emu (embed)
 		this.uxn = new Uxn(this)
 	}
 
-	this.init = (embed) => {
+	this.init = () => {
 		this.uxn.init(this).then(() => {
 			/* start devices */
 			// this.console.init()
 			this.screen.init()
 			this.controller.init()
-			/* Reveal */
-			document.body.className = this.embed ? "embed" : "default"
-			document.body.addEventListener("dragover", (e) => {
-				e.preventDefault();
-			});
-			document.body.addEventListener("drop", (e) => {
-				e.preventDefault();
-				this.load_file(e.dataTransfer.files[0])
-			});
 			// Decode rom in url
 			const rom_url = window.location.hash.match(/r(om)?=([^&]+)/);
 			if (rom_url) {
@@ -85,12 +75,6 @@ function Emu (embed)
 		})
 	}
 
-	this.start = (rom) => {
-		// this.console.start()
-		this.screen.set_zoom(default_zoom ? default_zoom : 1)
-		this.uxn.load(rom).eval(0x0100);
-	}
-
 	this.load_file = (file) => {
 		let reader = new FileReader()
 		reader.onload = (e) => {
@@ -100,7 +84,15 @@ function Emu (embed)
 	}
 
 	this.load = (rom) => {
-		this.start(rom)
+		// this.console.start()
+		this.reset();
+		this.uxn.load(rom).eval(0x0100);
+	}
+
+	this.reset = () => {
+		// We are only resetting/clearing the screen becase it is ok if there
+		// is a garbage in any other device.
+		this.screen.reset();
 	}
 
 	this.dei = (port) => {

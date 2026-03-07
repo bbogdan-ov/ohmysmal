@@ -88,6 +88,10 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "GET") {
+		return
+	}
+
 	v := templ.Handler(view.EditorPage())
 	v.ServeHTTP(w, r)
 }

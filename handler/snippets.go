@@ -61,11 +61,11 @@ func (h Handler) postSnippet(r *http.Request) (err error) {
 		return BadRequestError{err.Error()}
 	}
 
-	// TODO: remove repeating whitespaces from the description.
-	description := strings.TrimSpace(r.FormValue("description"))
+	// TODO: remove repeating whitespaces from the title.
+	title := strings.TrimSpace(r.FormValue("title"))
 
-	if utf8.RuneCountInString(description) > consts.MAX_SNIPPET_DESCRIPTION_LEN {
-		return UserError{fmt.Sprintf("Snippet description can't exceed %d characters.", consts.MAX_SNIPPET_DESCRIPTION_LEN)}
+	if utf8.RuneCountInString(title) > consts.MAX_SNIPPET_TITLE_LEN {
+		return UserError{fmt.Sprintf("Snippet title can't exceed %d characters.", consts.MAX_SNIPPET_TITLE_LEN)}
 	}
 
 	// Store the received file to the server's file system.
@@ -79,13 +79,13 @@ func (h Handler) postSnippet(r *http.Request) (err error) {
 	}
 
 	// Insert snippet to the database.
-	stmt, err := h.db.Prepare("INSERT INTO snippets (author_id, filename, description) VALUES (?, ?, ?)")
+	stmt, err := h.db.Prepare("INSERT INTO snippets (author_id, filename, title) VALUES (?, ?, ?)")
 	if err != nil {
 		return nil
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(user.Id, filename, description)
+	_, err = stmt.Exec(user.Id, filename, title)
 	if err != nil {
 		return err
 	}

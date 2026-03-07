@@ -28,7 +28,7 @@ func main() {
 
 	// Handle routes.
 	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleHome))
-	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleHome))
+	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleEditor))
 	http.HandleFunc("/hey", h.UserCacheMiddleware(h.HandleHey))
 
 	http.HandleFunc("/api/login", h.UserCacheMiddleware(h.HandleApiLogin))

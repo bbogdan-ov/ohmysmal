@@ -105,8 +105,14 @@ function Uxn (emu)
 	this.ram = ram;
 
 	this.load = (program) => {
-		for (let i = 0; i <= program.length; i++)
-			ram[0x100 + i] = program[i]
+		const START = 0x100;
+		if (program.length >= ram.length - START)
+			return this;
+
+		for (let i = 0; i < START; i++)
+			ram[i] = 0;
+		for (let i = 0; i < program.length; i++)
+			ram[START + i] = program[i]
 		return this
 	}
 

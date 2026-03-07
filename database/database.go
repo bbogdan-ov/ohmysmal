@@ -42,13 +42,13 @@ type User struct {
 }
 
 type Snippet struct {
-	Id          uint
-	AuthorId    uint
-	Filename    string
-	Description string
-	Flowers     uint
-	Comments    uint
-	Status      SnippetStatus
+	Id       uint
+	AuthorId uint
+	Filename string
+	Title    string
+	Flowers  uint
+	Comments uint
+	Status   SnippetStatus
 
 	AuthorNickname   string // Joined.
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
@@ -143,7 +143,7 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 			&s.Id,
 			&s.AuthorId,
 			&s.Filename,
-			&s.Description,
+			&s.Title,
 			&s.Flowers,
 			&s.Comments,
 			&s.Status,

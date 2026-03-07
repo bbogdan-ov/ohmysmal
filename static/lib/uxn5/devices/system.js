@@ -35,14 +35,15 @@ function System(emu)
 	}
 
 	this.metadata = (address) => {
-		let str = ""
-		if(!emu.uxn.ram[address++]) {
-			while(emu.uxn.ram[address]){
-				let byte = emu.uxn.ram[address++]
-				str += byte == 0xa ? "<br />" : String.fromCharCode(byte);
-			}
-			document.getElementById("metarom").innerHTML = str
-		}
+		// TODO: should i display rom's metadata somewhere?..
+		// let str = ""
+		// if(!emu.uxn.ram[address++]) {
+		// 	while(emu.uxn.ram[address]){
+		// 		let byte = emu.uxn.ram[address++]
+		// 		str += byte == 0xa ? "<br />" : String.fromCharCode(byte);
+		// 	}
+		// 	document.getElementById("metarom").innerHTML = str
+		// }
 	}
 	this.deo = (addr) => {
 		switch(addr) {

@@ -65,7 +65,7 @@ function Screen(emu)
 		this.repaint = 1
 	}
 
-	this.resize = (width, height, scale) => {
+	this.resize = (width, height, scale, force=false) => {
 		width = clamp(width, 8, 0x800);
 		height = clamp(height, 8, 0x800);
 		scale = clamp(scale, 1, 3);
@@ -74,7 +74,7 @@ function Screen(emu)
 		this.pixels = new Uint8ClampedArray(length)
 		this.scale = scale;
 		/* on resize */
-		if(this.width != width || this.height != height) {
+		if(this.width != width || this.height != height || force) {
 			let length = MAR2(width) * MAR2(height);
 			this.layers.fg = new Uint8ClampedArray(length)
 			this.layers.bg = new Uint8ClampedArray(length)
@@ -233,12 +233,29 @@ function Screen(emu)
 	}
 
 	this.toggle_zoom = () => {
-		this.set_zoom(this.zoom == 2 ? 1 : 2)
+		switch (this.zoom) {
+			case 1: this.set_zoom(2); break;
+			case 2: this.set_zoom(3); break;
+			case 3: this.set_zoom(4); break;
+			default: this.set_zoom(1); break;
+		}
 	}
 
 	this.set_zoom = (zoom) => {
 		this.zoom = zoom
 		this.display.style.width = `${(this.width * this.zoom)}px`
 		this.display.style.height = `${(this.height * this.zoom)}px`
+	}
+
+	this.reset = () => {
+		this.repaint = 0;
+		this.pixels = 0;
+		this.layers.fg = this.layers.bg = 0;
+		this.palette = [[],[],[],[]];
+		this.x1 = this.y1 = this.x2 = this.y2 = 0;
+		this.vector = 0;
+
+		this.resize(this.width, this.height, 1, true)
+		this.set_zoom(1)
 	}
 }

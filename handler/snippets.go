@@ -2,6 +2,7 @@ package handler
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -17,18 +18,27 @@ import (
 	"ohmysmal/view"
 )
 
+const SNIPPETS_DIR = "./snippets"
+
 func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
+	switch r.Method {
+	case "POST":
+		id, err := h.postSnippet(r)
+		if err != nil {
+			Error(w, err)
+			return
+		}
 
-	err := h.postSnippet(r)
-	if err != nil {
-		Error(w, err)
-		return
+		Redirect(w, fmt.Sprintf("/editor?snippet=%s", id))
+	case "GET":
+		err := h.snippetSource(w, r)
+		if err != nil {
+			Error(w, err)
+			return
+		}
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-
-	Redirect(w, "/")
 }
 
 func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
@@ -49,43 +59,86 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 	v.ServeHTTP(w, r)
 }
 
-func (h Handler) postSnippet(r *http.Request) (err error) {
+func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 	user, found := h.authorizedUser()
 	if !found {
-		return ErrUserNotAuth
+		return uuid.UUID{}, ErrUserNotAuth
 	}
 
 	// Parse form data.
 	err = r.ParseMultipartForm(consts.MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
 	if err != nil {
-		return BadRequestError{err.Error()}
+		return uuid.UUID{}, BadRequestError{err.Error()}
 	}
 
 	// TODO: remove repeating whitespaces from the title.
 	title := strings.TrimSpace(r.FormValue("title"))
 
 	if utf8.RuneCountInString(title) > consts.MAX_SNIPPET_TITLE_LEN {
-		return UserError{fmt.Sprintf("Snippet title can't exceed %d characters.", consts.MAX_SNIPPET_TITLE_LEN)}
+		return uuid.UUID{}, UserError{fmt.Sprintf("Snippet title can't exceed %d characters.", consts.MAX_SNIPPET_TITLE_LEN)}
 	}
+
+	id = uuid.New()
 
 	// Store the received file to the server's file system.
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		return err
+		return uuid.UUID{}, err
 	}
-	filename, err := validateAndWriteFile(file, header)
+	err = validateAndWriteFile(id, file, header)
 	if err != nil {
-		return err
+		return uuid.UUID{}, err
 	}
 
 	// Insert snippet to the database.
-	stmt, err := h.db.Prepare("INSERT INTO snippets (author_id, filename, title) VALUES (?, ?, ?)")
+	_, err = h.db.Exec("INSERT INTO snippets (id, author_id, title) VALUES (?, ?, ?)", id[:], user.Id, title)
 	if err != nil {
-		return nil
+		return uuid.UUID{}, err
 	}
-	defer stmt.Close()
 
-	_, err = stmt.Exec(user.Id, filename, title)
+	return id, nil
+}
+
+func (h Handler) snippetSource(w http.ResponseWriter, r *http.Request) (err error) {
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		return BadRequestError{"no id query param is provided"}
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return BadRequestError{err.Error()}
+	}
+
+	row := h.db.QueryRow("SELECT id FROM snippets WHERE id = ?", id)
+
+	err = row.Err()
+	if err == sql.ErrNoRows {
+		return UserError{"No such snippet"}
+	} else if err != nil {
+		return err
+	}
+
+	http.ServeFile(w, r, fmtSnippetFilename(id))
+
+	return nil
+}
+
+func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.FileHeader) (err error) {
+	// TODO: check for text file.
+
+	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
+		return UserError{"Source file is too large! It should not exceed 65KB of size."}
+	}
+
+	contents, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	const perm = 0o644 // read-write for owner, read-only for other
+
+	err = os.WriteFile(fmtSnippetFilename(id), contents, perm)
 	if err != nil {
 		return err
 	}
@@ -93,79 +146,65 @@ func (h Handler) postSnippet(r *http.Request) (err error) {
 	return nil
 }
 
-func validateAndWriteFile(file multipart.File, header *multipart.FileHeader) (filename string, err error) {
-	// TODO: check for text file.
-
-	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
-		return "", UserError{"Source file is too large! It should not exceed 65KB of size."}
-	}
-
-	contents, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-
-	filename = uuid.New().String()
-	path := fmt.Sprintf("./snippets/%s.smal", filename)
-	const perm = 0o644 // read-write for owner, read-only for other
-
-	err = os.WriteFile(path, contents, perm)
-	if err != nil {
-		return "", err
-	}
-
-	return filename, nil
-}
-
-func (h Handler) flowerSnippet(r *http.Request) (snippetId uint, flowers uint, flowered bool, err error) {
+func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers uint, flowered bool, err error) {
 	user, ok := h.authorizedUser()
 	if !ok {
-		return 0, 0, false, ErrUserNotAuth
+		return uuid.UUID{}, 0, false, ErrUserNotAuth
 	}
 
 	// Parse path params.
-	snippetId, err = UintPathValue(r, "snippet_id")
+	snippetId, err = UUIDPathValue(r, "snippet_id")
+	idBytes := snippetId[:]
 	if err != nil {
-		return 0, 0, false, err
+		return uuid.UUID{}, 0, false, err
 	}
 
 	// Request the current number of flowers in the snippet.
-	err = h.db.QueryRow("SELECT flowers FROM snippets WHERE id = ?", snippetId).Scan(&flowers)
+	err = h.db.QueryRow("SELECT flowers FROM snippets WHERE id = ?", idBytes).Scan(&flowers)
 	if err == sql.ErrNoRows {
-		return 0, 0, false, BadRequestError{"no snippet with this id"}
+		return uuid.UUID{}, 0, false, BadRequestError{"no snippet with this id"}
 	} else if err != nil {
-		return 0, 0, false, err
+		return uuid.UUID{}, 0, false, err
 	}
 
 	// Insert the flower to the database.
 	tx, err := h.db.Begin()
 	if err != nil {
-		return 0, 0, false, err
+		return uuid.UUID{}, 0, false, err
 	}
 	defer tx.Rollback()
 
 	// Give a flower to the snippet if the user haven't gave it before.
 	// The number of flowers in the snippet row will be updated automatically because of triggers.
-	result, err := tx.Exec("INSERT IGNORE INTO flowers (user_id, snippet_id) VALUES (?, ?)", user.Id, snippetId)
+	result, err := tx.Exec("INSERT IGNORE INTO flowers (user_id, snippet_id) VALUES (?, ?)", user.Id, idBytes)
 	if err != nil {
-		return 0, 0, false, err
+		return uuid.UUID{}, 0, false, err
 	}
 
 	if n, _ := result.RowsAffected(); n <= 0 {
 		// 0 rows were modified meaning that a flower was already given to the snippet. Take it back!!
 		// Again, the number of flowers in the snippet row will be updated
 		// automatically by MySql.
-		_, err := tx.Exec("DELETE FROM flowers WHERE user_id = ? AND snippet_id = ?", user.Id, snippetId)
+		_, err := tx.Exec("DELETE FROM flowers WHERE user_id = ? AND snippet_id = ?", user.Id, idBytes)
 		if err != nil {
-			return 0, 0, false, err
+			return uuid.UUID{}, 0, false, err
+		}
+
+		if flowers > 0 {
+			flowers -= 1
+		} else {
+			return uuid.UUID{}, 0, false, errors.New("cannot substruct from 0 flowers")
 		}
 
 		flowered = false
-		flowers -= 1
 	} else {
 		flowered = true
 		flowers += 1
 	}
 
 	return snippetId, flowers, flowered, tx.Commit()
+}
+
+func fmtSnippetFilename(id uuid.UUID) string {
+	return fmt.Sprintf("%s/%s.smal", SNIPPETS_DIR, id)
 }

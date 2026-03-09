@@ -3,6 +3,8 @@ package view
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"ohmysmal/database"
 	"ohmysmal/consts"
 )
@@ -10,15 +12,18 @@ import (
 templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
 	@page("home") {
 		<div class="container">
-			<a href="/editor">Open editor</a>
+			<h1>oh my smal</h1>
+
 			if exists {
 				@profile(user)
 			} else {
-				<div class="flex gap-2">
+				<div class="flex gap-2" style="margin-bottom: 2rem">
 					@loginForm()
 					@registerForm()
 				</div>
 			}
+
+			<a href="/editor">open editor</a>
 
 			@feed(snippets)
 		</div>
@@ -26,25 +31,8 @@ templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
 }
 
 templ profile(user database.User) {
-	<h1>Oh hi, {user.Nickname}!</h1>
+	<h2 style="margin-bottom: 2rem">hi, {user.Nickname}!</h2>
 	<a href="" hx-post="/api/logout">logout</a>
-
-	<form
-		hx-post="/api/snippet"
-		hx-swap="beforebegin"
-		hx-target-error="this"
-		hx-indicator="#post-spinner"
-		enctype="multipart/form-data"
-	>
-		<input type="file" name="file" required>
-		<textarea
-			name="title"
-			maxlength={consts.MAX_SNIPPET_TITLE_LEN}
-			style="height: 300px"
-		></textarea>
-		<button type="submit">Submit</button>
-		<span id="post-spinner" class="htmx-indicator">wait...</span>
-	</form>
 }
 
 templ feed(snippets []database.Snippet) {
@@ -56,33 +44,23 @@ templ feed(snippets []database.Snippet) {
 }
 templ snippet(s database.Snippet) {
 	<article class="snippet">
-		<p>{s.Title}</p>
-		<b>{"@"}{s.AuthorNickname} - {s.AuthorId}</b>
+		<p>
+			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>
+			<span class="text-muted">by {s.AuthorNickname}</span>
+		</p>
 
-		<div class="flex gap-2">
-			@SnippetFlowerButton(s.Id, s.Flowers, s.AuthUserFlowered)
-			<span>{s.Comments} comments</span>
-		</div>
-
-		<form
-			hx-post={ fmt.Sprintf("/api/comment/%d", s.Id) }
-			hx-swap="beforebegin"
-		>
-			<textarea
-				name="text"
-				maxlength={consts.MAX_COMMENT_TEXT_LEN}
-				required
-			></textarea>
-			<button type="submit">submit</button>
-		</form>
+		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>
 	</article>
 }
-templ SnippetFlowerButton(id uint, n uint, active bool) {
+
+templ SnippetFlowerButton(id uuid.UUID, n uint, active bool) {
 	<button
-		hx-post={ fmt.Sprintf("/api/flower/%d", id) }
+		hx-post={ fmt.Sprintf("/api/flower/%s", id.String()) }
 		hx-swap="outerHTML"
 		if active {
-			class="active"
+			class="button active"
+		} else {
+			class="button"
 		}
 	>
 		{n} flowers
@@ -91,11 +69,11 @@ templ SnippetFlowerButton(id uint, n uint, active bool) {
 
 templ loginForm() {
 	<form
+		class="form"
 		hx-post="/api/login"
 		hx-swap="innerHTML"
 		hx-target="#login-result"
 		hx-target-error="#login-result"
-		hx-indicator="#login-spinner"
 	>
 		<span id="login-result"></span>
 		<input
@@ -112,18 +90,17 @@ templ loginForm() {
 			required
 			maxlength={consts.MAX_PASSWORD_LEN}
 		/>
-		<button type="submit">Login</button>
-		<span id="login-spinner" class="htmx-indicator">wait...</span>
+		<button class="button" type="submit">login</button>
 	</form>
 }
 
 templ registerForm() {
 	<form
+		class="form"
 		hx-post="/api/register"
 		hx-swap="innerHTML"
 		hx-target="#register-result"
 		hx-target-error="#register-result"
-		hx-indicator="#register-spinner"
 	>
 		<span id="register-result"></span>
 		<input
@@ -147,8 +124,7 @@ templ registerForm() {
 			required
 			maxlength={consts.MAX_PASSWORD_LEN}
 		/>
-		<button type="submit">Register</button>
-		<span id="register-spinner" class="htmx-indicator">wait...</span>
+		<button class="button" type="submit">register</button>
 	</form>
 }
 

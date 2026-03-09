@@ -31,9 +31,10 @@ body {
 /* -------------------- */
 
 .feed {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
+	padding-block: 2rem;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 1rem;
 }
 .snippet {
 	padding: 1rem;
@@ -42,12 +43,8 @@ body {
 	flex-direction: column;
 	align-items: flex-start;
 
-	border: 1px solid var(--white);
+	border: 1px solid var(--text-color);
 	border-radius: 2px;
-
-	button.active {
-		background: blue;
-	}
 }
 
 /* -------------------- */
@@ -64,8 +61,12 @@ body {
 	grid-template-columns: 3fr 1fr;
 	overflow: hidden;
 }
+.editor-container, .editor-sidebar {
+	> div:not(:last-child) {
+		border-bottom: 1px solid var(--border-color);
+	}
+}
 .editor-container {
-	width: 100%;
 	height: 100%;
 
 	display: flex;
@@ -80,21 +81,48 @@ body {
 
 		.CodeMirror {
 			flex: 1 0 auto;
-			border-bottom: 1px solid var(--border-color);
 		}
 	}
-	#editor-stats {
-		--height: 26px;
+}
+.editor-sidebar {
+	min-width: 300px;
 
-		padding: 0 .75rem;
-		height: var(--height);
+	display: flex;
+	flex-direction: column;
 
-		text-align: right;
-		line-height: var(--height);
+	.comments {
+		padding: .5rem;
 
-		opacity: .5;
+		display: flex;
+		flex-direction: column;
+		gap: .5rem;
+		overflow-y: scroll;
+
+		#comments-list {
+			display: flex;
+			flex-direction: column;
+		}
+	}
+
+	#editor-problems {
+		padding: .5rem;
+		min-height: 50%;
+
+		display: flex;
+		flex-direction: column;
+
+		.info {
+			animation: info-fade both 3s;
+		}
+		.error { color: #fb4934; }
+		.note { city: 1; color: #8ec07c; }
 	}
 }
+@keyframes info-fade {
+	0%, 80% { opacity: 1; }
+	100% { opacity: .25; }
+}
+
 #display-window {
 	padding: .5rem;
 
@@ -113,14 +141,13 @@ body {
 	canvas {
 		outline: 1px solid var(--border-color);
 		image-rendering: pixelated;
+		cursor: none;
 	}
 	.display-stats {
 		display: flex;
 		align-items: center;
 		user-select: none;
 		line-height: 80%;
-
-		opacity: 0.5;
 	}
 
 	&:focus {
@@ -128,30 +155,35 @@ body {
 	}
 }
 
-.editor-snippet-info {
-	min-width: 300px;
-	max-height: 100%;
-	padding: 1rem;
-
+.statusbar {
+	min-height: 38px;
+	padding: .25rem .75rem;
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	justify-content: space-between;
 	gap: 1rem;
-	overflow: auto;
+	text-wrap: nowrap;
 
-	textarea {
-		height: 120px;
+	form {
+		display: flex;
+		align-items: center;
+		gap: .25rem;
 	}
+	button {
+		padding: .1em .5em;
+		&[type=submit] { margin-left: .5rem; }
+	}
+	input { width: 220px; padding: .1em 0; }
 }
-
 .stats {
 	font-family: monospace;
 	font-size: .8rem;
+	opacity: .5;
 }
 
 .CodeMirror {
 	--selection: var(--blue);
 
-	width: 100%;
 	font-size: 1.1rem;
 
 	.CodeMirror-lines {
@@ -196,7 +228,32 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	padding: 0 10px;
 	padding-top: 3rem;
 
+	display: flex;
+	flex-direction: column;
 	margin: 0 auto;
+}
+
+#loader {
+	width: 100%;
+	height: 100%;
+
+	z-index: 10;
+	position: fixed;
+	left: 0;
+	top: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+
+	background: var(--background);
+
+	transition: .1s;
+
+	&.hidden {
+		opacity: 0;
+		pointer-events: none;
+	}
 }
 
 h1, h2, h3, h4 {
@@ -217,7 +274,7 @@ hr {
 	opacity: .5;
 }
 
-form {
+.form {
 	width: 100%;
 
 	display: flex;
@@ -229,6 +286,10 @@ form {
 		margin-top: auto;
 	}
 }
+form.htmx-request button[type=submit] {
+	opacity: .5;
+	pointer-events: none;
+}
 input {
 	width: 100%;
 	padding: .4em 0;
@@ -239,17 +300,17 @@ input {
 	color: var(--text-color);
 	border: none;
 	border-bottom: 1px dotted var(--text-color);
+	outline: none;
 
 	&::placeholder {
-		color: rgba(255, 255, 255, .5);
+		color: rgba(0, 0, 0, .5);
 	}
 
 	&:focus {
-		outline: none;
 		border-bottom-style: solid;
 	}
 }
-button {
+.button {
 	padding: .25em .5em;
 
 	font-family: var(--font);
@@ -265,11 +326,17 @@ button {
 	&:active {
 		translate: 0 1px;
 	}
+	&.active {
+		background: blue;
+	}
 
 	&.htmx-request {
 		pointer-events: none;
 		opacity: 0.5;
 	}
+}
+button {
+	text-wrap: nowrap;
 }
 textarea {
 	width: 100%;
@@ -295,7 +362,16 @@ label > span {
 
 .link-ish {
 	cursor: pointer;
+	color: inherit;
 	&:hover { text-decoration: underline; }
+}
+button.link-ish {
+	padding: 0;
+
+	font-family: var(--font);
+	font-size: 1rem;
+	border: none;
+	background: transparent;
 }
 
 .text-muted {

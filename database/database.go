@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // TODO: move the password into an .env file.
@@ -42,9 +44,8 @@ type User struct {
 }
 
 type Snippet struct {
-	Id       uint
+	Id       uuid.UUID
 	AuthorId uint
-	Filename string
 	Title    string
 	Flowers  uint
 	Comments uint
@@ -52,6 +53,14 @@ type Snippet struct {
 
 	AuthorNickname   string // Joined.
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
+}
+
+type Comment struct {
+	Id             uint
+	AuthorId       uint
+	SnippetId      uuid.UUID
+	Text           string
+	AuthorNickname string // Joined.
 }
 
 func Connect() *sql.DB {
@@ -109,7 +118,7 @@ func IsNicknameTaken(db *sql.DB, nickname string) (taken bool, err error) {
 	return true, nil
 }
 
-func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUser bool) (count int, err error) {
+func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUser bool) (err error) {
 	var rows *sql.Rows
 
 	if hasAuthUser {
@@ -127,11 +136,10 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 	}
 
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer rows.Close()
 
-	count = 0
 	var s Snippet
 
 	for {
@@ -139,24 +147,98 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 			break
 		}
 
-		err = rows.Scan(
-			&s.Id,
-			&s.AuthorId,
-			&s.Filename,
-			&s.Title,
-			&s.Flowers,
-			&s.Comments,
-			&s.Status,
-			&s.AuthorNickname,
-			&s.AuthUserFlowered,
-		)
+		err = RowsScanSnippet(rows, &s)
 		if err != nil {
-			return 0, err
+			return err
 		}
 
 		*snippets = append(*snippets, s)
-		count += 1
 	}
 
-	return count, nil
+	return nil
+}
+
+func RequestSnippet(
+	db *sql.DB,
+	id uuid.UUID,
+	authUserId uint,
+	hasAuthUser bool,
+) (snippet Snippet, err error) {
+	var row *sql.Row
+
+	if hasAuthUser {
+		// Select all snippets + add a new column "flowered" that indicates
+		// wheter the user with id `authUserId` flowered this snippet.
+		row = db.QueryRow(`
+		SELECT
+			snippets_with_author.*,
+			(flowers.user_id IS NOT NULL) as flowered
+		FROM snippets_with_author
+		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
+		WHERE id = ?
+		`, authUserId, id[:])
+	} else {
+		row = db.QueryRow("SELECT *, false as flowered FROM snippets_with_author WHERE id = ?", id[:])
+	}
+
+	if RowScanSnippet(row, &snippet) != nil {
+		return snippet, err
+	}
+
+	return snippet, nil
+}
+
+func RequestSnippetComments(db *sql.DB, id uuid.UUID, comments *[]Comment) (err error) {
+	rows, err := db.Query(`
+	SELECT comments.*, users.nickname as author_nickname
+	FROM comments
+	JOIN users ON author_id = users.id
+	WHERE snippet_id = ?
+	`, id[:])
+
+	if err != nil {
+		return err
+	}
+
+	var c Comment
+
+	for {
+		if !rows.Next() {
+			break
+		}
+
+		err = rows.Scan(&c.Id, &c.SnippetId, &c.AuthorId, &c.Text, &c.AuthorNickname)
+		if err != nil {
+			return err
+		}
+
+		*comments = append(*comments, c)
+	}
+
+	return nil
+}
+
+func RowScanSnippet(row *sql.Row, s *Snippet) error {
+	return row.Scan(
+		&s.Id,
+		&s.AuthorId,
+		&s.Title,
+		&s.Flowers,
+		&s.Comments,
+		&s.Status,
+		&s.AuthorNickname,
+		&s.AuthUserFlowered,
+	)
+}
+func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
+	return rows.Scan(
+		&s.Id,
+		&s.AuthorId,
+		&s.Title,
+		&s.Flowers,
+		&s.Comments,
+		&s.Status,
+		&s.AuthorNickname,
+		&s.AuthUserFlowered,
+	)
 }

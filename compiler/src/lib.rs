@@ -1,8 +1,10 @@
-use uxnsmal::{compiler, lexer, parser, problem, typechecker, bytecode};
+use uxnsmal::{bytecode, compiler, lexer, parser, problem, typechecker};
 
 unsafe extern "C" {
 	fn console_log(ptr: *const u8, len: usize);
 	fn load(ptr: *const u8, len: usize);
+	fn problem(line: usize, col: usize, ptr: *const u8, len: usize);
+	fn note(line: usize, col: usize, ptr: *const u8, len: usize);
 }
 fn log(s: &str) {
 	unsafe { console_log(s.as_ptr(), s.len()) };
@@ -29,22 +31,37 @@ pub extern "C" fn compile_source(ptr: *const u8, len: usize) {
 
 	match compile(source, &mut problems) {
 		Ok(bytecode) => {
-			log(&format!("OK {}",bytecode.opcodes.len()));
-			if let Some(p) = problems.list.first() {
-				log(&p.msg);
-			}
-			unsafe { load(bytecode.opcodes.as_ptr(), bytecode.opcodes.len()); }
-		},
+			log(&format!("Compiled {}", bytecode.opcodes.len()));
+			unsafe { load(bytecode.opcodes.as_ptr(), bytecode.opcodes.len()) };
+		}
 		Err(problem::FatalError) => {
-			log(&problems.list[0].msg)
+			for p in problems.list.iter() {
+				if p.kind != problem::ProblemKind::Error {
+					// Display only errors for now.
+					continue;
+				}
+
+				unsafe { problem(p.span.line, p.span.col, p.msg.as_ptr(), p.msg.len()) };
+
+				for n in p.notes.iter() {
+					unsafe { note(n.span.line, n.span.col, n.msg.as_ptr(), n.msg.len()) };
+				}
+			}
 		}
 	}
 }
 
-fn compile(source: &str, problems: &mut problem::Problems) -> Result<bytecode::Bytecode, problem::FatalError> {
+fn compile(
+	source: &str,
+	problems: &mut problem::Problems,
+) -> Result<bytecode::Bytecode, problem::FatalError> {
 	let tokens = lexer::Lexer::lex(source, problems)?;
 	let mut ast = parser::Parser::parse(source, problems, &tokens)?;
 	let program = typechecker::Typechecker::check(&mut ast, problems)?;
+	if problems.list.len() > 0 {
+		return Err(problem::FatalError);
+	}
+
 	let bytecode = compiler::Compiler::compile(&program);
 
 	Ok(bytecode)

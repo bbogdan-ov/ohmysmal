@@ -10,5 +10,5 @@ ohmysmal: $(SERVER_SOURCE) $(TEMPL_SOURCE) go.mod go.sum static/wasm/compiler.wa
 	go build .
 
 static/wasm/compiler.wasm: $(COMPILER_SOURCE)
-	cd compiler && cargo build --target=wasm32-unknown-unknown
-	cp compiler/target/wasm32-unknown-unknown/debug/compiler.wasm static/wasm/compiler.wasm
+	cd compiler && cargo build --release --target=wasm32-unknown-unknown
+	cp compiler/target/wasm32-unknown-unknown/release/compiler.wasm static/wasm/compiler.wasm

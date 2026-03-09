@@ -1,10 +1,33 @@
 import { initCompiler } from "./compiler.js";
 
 const DEFAULT_CODE = `\
+// hello
+
+// Note that UXNSMAL is VERY INCOMPLETE!
+// Anything could be changed without any notice.
+// These is also no documentation, you're on your own.
+// Good luck.
+//
+// http://github.com/bbogdan-ov/uxnsmal
+//
+// Hot keys:
+//     Ctrl-Enter - Compile and run
+
+fun on-reset ( -> ) {
+	// The entry point...
+}
+
+// Here is all the devices you need to start doing things:
 alias enum byte System {
+	expansion { 0x02 }
+	wst       { 0x04 }
+	rst       { 0x05 }
+	metadata  { 0x06 }
 	red       { 0x08 }
 	green     { 0x0a }
 	blue      { 0x0c }
+	debug     { 0x0e }
+	state     { 0x0f }
 }
 
 alias enum byte Screen {
@@ -19,6 +42,12 @@ alias enum byte Screen {
 	sprite { 0x2f }
 }
 
+alias enum byte Controller {
+	vector { 0x80 }
+	button { 0x82 }
+	key    { 0x83 }
+}
+
 alias enum byte Mouse {
 	vector  { 0x90 }
 	x       { 0x92 }
@@ -28,35 +57,16 @@ alias enum byte Mouse {
 	scrolly { 0x9c }
 }
 
-fun on-reset ( -> ) {
-	0xf000* System.red output
-	0xf000* System.green output
-	0xf000* System.blue output
-
-	256* Screen.width output
-	256* Screen.height output
-
-	&on-mouse Mouse.vector output
-}
-
-fun on-mouse ( -> ) {
-	Mouse.state input 0 eq if { return }
-
-	Mouse.x input2 4* sub Screen.x output
-	Mouse.y input2 4* sub Screen.y output
-	&circle Screen.addr output
-	0b00000101 Screen.sprite output
-}
-
-data circle {
-	0b00111100
-	0b01111110
-	0b11111111
-	0b11111111
-	0b11111111
-	0b11111111
-	0b01111110
-	0b00111100
+alias enum byte Datetime {
+	year   { 0xc0 }
+	month  { 0xc2 }
+	day    { 0xc3 }
+	hour   { 0xc4 }
+	minute { 0xc5 }
+	second { 0xc6 }
+	dotw   { 0xc7 }
+	doty   { 0xc8 }
+	isdst  { 0xca }
 }`;
 
 async function init() {
@@ -70,19 +80,64 @@ async function init() {
 	// Init display window.
 	const win = initDisplayWindow(emu, editor);
 
-	// Init the UXNSMAL compiler.
-	const { compile } = await initCompiler(emu);
+	const problems = document.getElementById("editor-problems");
+
+	function addMessage(msg, className) {
+		const m = document.createElement("p");
+		m.textContent = msg;
+		m.className = className ?? "info";
+		problems.append(m);
+	}
+	function addProblem(line, col, msg) {
+		addMessage(`${line+1}:${col+1}: error: ${msg}`, "error");
+	}
+	function addNote(line, col, msg) {
+		addMessage(`${line+1}:${col+1}: note: ${msg}`, "note");
+	}
+
+	let start = 0;
 
 	function recompile(focus=false) {
+		problems.innerHTML = "";
+
+		start = Date.now();
+		addMessage("Compiling...")
+
 		compile(editor.doc.getValue());
 		if (focus) win.focus();
 	}
+	function load(program) {
+		const elapsed = Date.now() - start;
+		addMessage(`Compiled ${program.length} bytes in ${elapsed}ms!`);
+		emu.load(program);
+	}
 
+	// Init the UXNSMAL compiler.
+	setLoadingText("Loading the UXNSMAL compiler...");
+	const { compile } = await initCompiler(load, addProblem, addNote);
+
+	// Load snippet source code if any.
+	const params = new URLSearchParams(new URL(window.location.href).search);
+	const snippetId = params.get("snippet");
+	if (snippetId != null) {
+		setLoadingText("Loading the snippet source code...");
+		const res = await fetch(`/api/snippet?id=${snippetId}`);
+		const text = await res.text();
+
+		editor.setValue(text);
+	}
+
+	setLoadingText("Compiling the snippet...");
 	recompile();
 
+	initPostForm(editor);
+
 	editor.setOption("extraKeys", {
-		"Ctrl-Enter": () => recompile(true)
+		"Ctrl-Enter": () => recompile(true),
 	});
+
+	setLoadingText("Done!");
+	setLoadingText(null);
 }
 
 function initEditor() {
@@ -96,8 +151,8 @@ function initEditor() {
 		indentWithTabs: true,
 		smartIndent: true,
 		autofocus: true,
-		value: DEFAULT_CODE,
 		showTrailingSpace: true,
+		value: DEFAULT_CODE,
 	});
 
 	function updateStats() {
@@ -190,6 +245,48 @@ function initDisplayWindow(emu, editor) {
 	}
 
 	return win;
+}
+
+function initPostForm(editor) {
+	const form = document.getElementById("editor-post-form");
+	if (!form) return;
+
+	async function onSubmit(e) {
+		e.preventDefault();
+
+		const blob = new Blob([editor.getValue()], {
+			type: "text/plain; charset=utf-8"
+		});
+
+		const data = new FormData(form);
+		data.append("file", blob, "source.smal");
+
+		try {
+			const res = await fetch("/api/snippet", {
+				method: "POST",
+				body: data,
+			});
+			window.location.replace(res.headers.get("HX-Redirect"));
+		} catch (e) {
+			console.error("Failed to post the snippet.");
+			console.error(e);
+		}
+	}
+
+	form.addEventListener("submit", onSubmit);
+}
+
+function setLoadingText(text) {
+	const loader = document.getElementById("loader");
+	const loaderText = document.getElementById("loader-text");
+
+	if (!text) {
+		loader.classList.add("hidden");
+		return;
+	}
+
+	loaderText.textContent = text;
+	loader.classList.remove("hidden");
 }
 
 document.addEventListener("DOMContentLoaded", init);

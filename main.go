@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 )
 
 func main() {
+	net.DefaultResolver = &net.Resolver{PreferGo: false}
+
 	// Setup cache.
 	cache := cache.New(time.Second, time.Second*5)
 

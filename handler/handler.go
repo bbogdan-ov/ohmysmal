@@ -10,6 +10,7 @@ import (
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
@@ -77,7 +78,7 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	user, ok := h.authorizedUser()
 
 	snippets := make([]database.Snippet, 0, 20)
-	_, err := database.RequestSnippets(h.db, &snippets, user.Id, ok)
+	err := database.RequestSnippets(h.db, &snippets, user.Id, ok)
 	if err != nil {
 		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
 		// fallthough
@@ -92,7 +93,38 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := templ.Handler(view.EditorPage())
+	user, authed := h.authorizedUser()
+
+	var snippet database.Snippet
+	var comments []database.Comment
+	found := false
+
+	// TODO: refactor this.
+	idStr := r.URL.Query().Get("snippet")
+	if idStr != "" {
+		snippetId, err := uuid.Parse(idStr)
+		if err == nil {
+			snippet, err = database.RequestSnippet(h.db, snippetId, user.Id, authed)
+			if err == sql.ErrNoRows {
+				// fallthough and do nothing
+			} else if err != nil {
+				Error(w, err)
+				return
+			} else {
+				comments = make([]database.Comment, 0, 20)
+				err = database.RequestSnippetComments(h.db, snippetId, &comments)
+				if err != nil {
+					Error(w, err)
+					return
+				}
+
+				found = true
+			}
+		}
+	}
+
+	_ = found
+	v := templ.Handler(view.EditorPage(snippet, user, authed, comments))
 	v.ServeHTTP(w, r)
 }
 
@@ -126,10 +158,26 @@ func UintPathValue(r *http.Request, name string) (uint, error) {
 
 	num, err := strconv.ParseUint(str, 10, 32)
 	if err != nil {
-		return 0, BadRequestError{fmt.Sprintf(`param "%s" is of an 'uint': %s`, name, err)}
+		return 0, BadRequestError{fmt.Sprintf(`param "%s" is not a 'uint': %s`, name, err)}
 	}
 
 	return uint(num), nil
+}
+
+// Parse a path value of type `uuid.UUID` from a request.
+func UUIDPathValue(r *http.Request, name string) (uuid.UUID, error) {
+	str := r.PathValue(name)
+	if str == "" {
+		return uuid.UUID{}, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
+	}
+
+	id, err := uuid.Parse(str)
+	if err != nil {
+		msg := fmt.Sprintf(`param "%s" is an invalid UUID: %s`, name, err)
+		return uuid.UUID{}, BadRequestError{msg}
+	}
+
+	return id, nil
 }
 
 // Returns whether the method in a request is equal to `method`, if not,

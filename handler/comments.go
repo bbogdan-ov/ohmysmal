@@ -27,7 +27,8 @@ func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) postComment(r *http.Request) (author string, text string, err error) {
-	user, found := h.authorizedUser()
+	session := h.DefaultSession(r)
+	user, found := h.authorizedUser(session)
 	if !found {
 		return "", "", ErrUserNotAuth
 	}

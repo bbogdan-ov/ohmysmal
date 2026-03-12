@@ -60,7 +60,8 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
-	user, found := h.authorizedUser()
+	session := h.DefaultSession(r)
+	user, found := h.authorizedUser(session)
 	if !found {
 		return uuid.UUID{}, ErrUserNotAuth
 	}
@@ -75,7 +76,8 @@ func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 	title := strings.TrimSpace(r.FormValue("title"))
 
 	if utf8.RuneCountInString(title) > consts.MAX_SNIPPET_TITLE_LEN {
-		return uuid.UUID{}, UserError{fmt.Sprintf("Snippet title can't exceed %d characters.", consts.MAX_SNIPPET_TITLE_LEN)}
+		msg := fmt.Sprintf("Snippet title can't exceed %d characters.", consts.MAX_SNIPPET_TITLE_LEN)
+		return uuid.UUID{}, UserError{msg}
 	}
 
 	id = uuid.New()
@@ -147,7 +149,8 @@ func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.F
 }
 
 func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers uint, flowered bool, err error) {
-	user, ok := h.authorizedUser()
+	session := h.DefaultSession(r)
+	user, ok := h.authorizedUser(session)
 	if !ok {
 		return uuid.UUID{}, 0, false, ErrUserNotAuth
 	}

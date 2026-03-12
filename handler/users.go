@@ -58,7 +58,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 
 	session := h.DefaultSession(r)
 
-	if _, ok := h.authorizedUser(); ok {
+	if _, ok := h.authorizedUser(session); ok {
 		return ErrUserAlreadyAuth
 	}
 
@@ -101,7 +101,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	session := h.DefaultSession(r)
 
-	if _, ok := h.authorizedUser(); ok {
+	if _, ok := h.authorizedUser(session); ok {
 		return ErrUserAlreadyAuth
 	}
 
@@ -170,7 +170,10 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 
-	_ = h.cache.Delete(USER_CACHE_KEY) // ignore if not found
+	userId, found := h.authorizedUserId(session)
+	if found {
+		_ = h.cache.Delete(fmtUserCacheKey(userId)) // ignore if not found
+	}
 
 	delete(session.Values, USER_ID_SESSION_KEY)
 	err := session.Save(r, w)
@@ -179,10 +182,31 @@ func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h Handler) authorizedUserId(session *sessions.Session) (id uint, found bool) {
+	value := session.Values[USER_ID_SESSION_KEY]
+	if value == nil {
+		return 0, false
+	}
+
+	userId, ok := value.(uint)
+	if !ok {
+		log.Printf("ERROR: User ID in the session is not an `uint`")
+		delete(session.Values, USER_ID_SESSION_KEY)
+		return 0, false
+	}
+
+	return userId, true
+}
+
 // Returns the authorized user. The info is stored in the cache,
 // it may be outdated but that's fine i guess.
-func (h Handler) authorizedUser() (user database.User, found bool) {
-	value, found := h.cache.Get(USER_CACHE_KEY)
+func (h Handler) authorizedUser(session *sessions.Session) (user database.User, found bool) {
+	id, found := h.authorizedUserId(session)
+	if !found {
+		return database.User{}, false
+	}
+
+	value, found := h.cache.Get(fmtUserCacheKey(id))
 	if value == nil {
 		return database.User{}, false
 	}

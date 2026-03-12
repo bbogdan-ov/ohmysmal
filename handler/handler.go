@@ -21,7 +21,6 @@ import (
 const (
 	SESSION_NAME        = "ohmysmal"
 	USER_ID_SESSION_KEY = "id"
-	USER_CACHE_KEY      = "user"
 )
 
 var (
@@ -75,7 +74,8 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, ok := h.authorizedUser()
+	session := h.DefaultSession(r)
+	user, ok := h.authorizedUser(session)
 
 	snippets := make([]database.Snippet, 0, 20)
 	err := database.RequestSnippets(h.db, &snippets, user.Id, ok)
@@ -93,7 +93,8 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, authed := h.authorizedUser()
+	session := h.DefaultSession(r)
+	user, authed := h.authorizedUser(session)
 
 	var snippet database.Snippet
 	var comments []database.Comment

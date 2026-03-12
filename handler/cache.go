@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"ohmysmal/database"
@@ -20,7 +21,14 @@ func (h Handler) UserCacheMiddleware(handler http.HandlerFunc) http.HandlerFunc 
 
 		session := h.DefaultSession(r)
 
-		_, found := h.cache.Get(USER_CACHE_KEY)
+		userId, ok := session.Values[USER_ID_SESSION_KEY].(uint)
+		if !ok {
+			delete(session.Values, USER_ID_SESSION_KEY)
+			handler.ServeHTTP(w, r)
+			return
+		}
+
+		_, found := h.cache.Get(fmtUserCacheKey(userId))
 		if !found || methodUpdatesCache(r.Method) {
 			h.updateUserCache(w, r, session)
 		}
@@ -72,6 +80,10 @@ func (h Handler) requestAndCacheUser(id uint) (err error) {
 		return err
 	}
 
-	h.cache.Set(USER_CACHE_KEY, user, time.Minute)
+	h.cache.Set(fmtUserCacheKey(id), user, time.Minute)
 	return nil
+}
+
+func fmtUserCacheKey(id uint) string {
+	return fmt.Sprintf("user-%d", id)
 }

@@ -59,6 +59,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	session := h.DefaultSession(r)
 
 	if _, ok := h.authorizedUser(session); ok {
+		log.Printf("USERS: WARNING: Already authed user tried to log in, do nothing")
 		return ErrUserAlreadyAuth
 	}
 
@@ -84,6 +85,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	if err == server.ErrUserNotFound {
 		return UserError{INVALID_MSG}
 	} else if err != nil {
+		log.Printf("USERS: ERROR: Login failed: Failed to request an existing user: %s", err)
 		return err
 	}
 
@@ -95,6 +97,8 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	rememberUser(w, r, session, user.Id)
+
+	log.Printf("USERS: INFO: User successfully logged in: %d, %s", user.Id, user.Nickname)
 	return nil
 }
 
@@ -102,6 +106,7 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	session := h.DefaultSession(r)
 
 	if _, ok := h.authorizedUser(session); ok {
+		log.Printf("USERS: WARNING: Already authed user tried to register, do nothing")
 		return ErrUserAlreadyAuth
 	}
 
@@ -146,6 +151,7 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	// Check whether the nickname is taken.
 	taken, err := server.IsNicknameTaken(h.db, nickname)
 	if err != nil {
+		log.Printf("USERS: ERROR: Registration failed: Failed to check for nickname existance: %s", err)
 		return err
 	}
 	if taken {
@@ -155,15 +161,18 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	// Insert user to the server.
 	result, err := h.db.Exec("INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
 	if err != nil {
+		log.Printf("USERS: ERROR: Registration failed: Failed to insert user data into the database: %s", err)
 		return err
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
+		log.Printf("USERS: ERROR: Registration failed: Failed to retrieve registered user id: %s", err)
 		return err
 	}
 
 	rememberUser(w, r, session, uint(id))
 
+	log.Printf("USERS: INFO: User successfully registered: %d, %s", id, nickname)
 	return nil
 }
 
@@ -172,14 +181,12 @@ func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 	userId, found := h.authorizedUserId(session)
 	if found {
+		log.Printf("USERS: INFO: User logged out: %d", userId)
 		_ = h.cache.Delete(fmtUserCacheKey(userId)) // ignore if not found
 	}
 
 	delete(session.Values, USER_ID_SESSION_KEY)
-	err := session.Save(r, w)
-	if err != nil {
-		log.Printf("ERROR: Failed to save the session: %s", err)
-	}
+	_ = session.Save(r, w)
 }
 
 func (h Handler) authorizedUserId(session *sessions.Session) (id uint, found bool) {
@@ -190,7 +197,7 @@ func (h Handler) authorizedUserId(session *sessions.Session) (id uint, found boo
 
 	userId, ok := value.(uint)
 	if !ok {
-		log.Printf("ERROR: User ID in the session is not an `uint`")
+		log.Printf("USERS: ERROR: User ID in the session is not an `uint`")
 		delete(session.Values, USER_ID_SESSION_KEY)
 		return 0, false
 	}
@@ -213,7 +220,7 @@ func (h Handler) authorizedUser(session *sessions.Session) (user server.User, fo
 
 	user, ok := value.(server.User)
 	if !ok {
-		log.Printf("ERROR: Stored user info in the cache is of an invalid type (%s)", reflect.TypeOf(value))
+		log.Printf("USERS: ERROR: Stored user info in the cache is of an invalid type (%s)", reflect.TypeOf(value))
 		return server.User{}, false
 	} else {
 		return user, ok
@@ -224,7 +231,7 @@ func rememberUser(w http.ResponseWriter, r *http.Request, session *sessions.Sess
 	session.Values[USER_ID_SESSION_KEY] = id
 	err := session.Save(r, w)
 	if err != nil {
-		log.Printf("ERROR: Failed to save the session: %s", err)
+		log.Printf("USERS: ERROR: Failed to save the session: %s", err)
 	}
 }
 

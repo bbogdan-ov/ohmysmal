@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"unicode/utf8"
+	"log"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -63,6 +64,7 @@ func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 	session := h.DefaultSession(r)
 	user, found := h.authorizedUser(session)
 	if !found {
+		log.Printf("SNIPPETS: WARNING: Not authed user tried to create a snippet")
 		return uuid.UUID{}, ErrUserNotAuth
 	}
 
@@ -85,16 +87,19 @@ func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 	// Store the received file to the server's file system.
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		log.Printf("SNIPPETS: ERROR: Snippet posting failed: Failed to parse form file: %s", err)
 		return uuid.UUID{}, err
 	}
 	err = validateAndWriteFile(id, file, header)
 	if err != nil {
+		log.Printf("SNIPPETS: ERROR: Snippet posting failed: File is invalid: %s", err)
 		return uuid.UUID{}, err
 	}
 
 	// Insert snippet to the database.
 	_, err = h.db.Exec("INSERT INTO snippets (id, author_id, title) VALUES (?, ?, ?)", id[:], user.Id, title)
 	if err != nil {
+		log.Printf("SNIPPETS: ERROR: Snippet posting failed: Failed to insert the snippet data into the database: %s", err)
 		return uuid.UUID{}, err
 	}
 
@@ -118,6 +123,7 @@ func (h Handler) snippetSource(w http.ResponseWriter, r *http.Request) (err erro
 	if err == sql.ErrNoRows {
 		return UserError{"No such snippet"}
 	} else if err != nil {
+		log.Printf("SNIPPETS: ERROR: Failed to fetch snippet source code: %s", err)
 		return err
 	}
 

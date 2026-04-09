@@ -10,8 +10,8 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
-	"ohmysmal/server"
 	"ohmysmal/handler"
+	"ohmysmal/server"
 )
 
 func main() {

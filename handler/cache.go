@@ -21,16 +21,25 @@ func (h Handler) UserCacheMiddleware(handler http.HandlerFunc) http.HandlerFunc 
 
 		session := h.DefaultSession(r)
 
-		userId, ok := session.Values[USER_ID_SESSION_KEY].(uint)
+		sessionUserId := session.Values[USER_ID_SESSION_KEY]
+		if sessionUserId == nil {
+			handler.ServeHTTP(w, r)
+			return
+		}
+
+		userId, ok := sessionUserId.(uint)
 		if !ok {
+			log.Printf("CACHE: WARNING: User ID in the session is invalid, destroying the session")
 			delete(session.Values, USER_ID_SESSION_KEY)
+			_ = session.Save(r, w)
+
 			handler.ServeHTTP(w, r)
 			return
 		}
 
 		_, found := h.cache.Get(fmtUserCacheKey(userId))
 		if !found || methodUpdatesCache(r.Method) {
-			h.updateUserCache(w, r, session)
+			_ = h.updateUserCache(w, r, session)
 		}
 
 		handler.ServeHTTP(w, r)
@@ -50,24 +59,29 @@ func methodUpdatesCache(method string) bool {
 // Updates the currently authorized user cache. Cache will be updated even if
 // it is already present or it is not expired yet.
 func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session *sessions.Session) (err error) {
+	log.Printf("CACHE: INFO: Updating auth user cache...")
+
 	userId, _ := session.Values[USER_ID_SESSION_KEY]
 	if userId == nil {
+		log.Printf("CACHE: WARNING: User is not authorized, nothing to update")
 		return ErrUserNotAuth
 	}
 
 	id, ok := userId.(uint)
 	if !ok {
-		log.Printf("ERROR: User id in the session has an invalid type (%s)", reflect.TypeOf(userId))
+		log.Printf("CACHE: ERROR: User id in the session has an invalid type (%s)", reflect.TypeOf(userId))
 		return ErrUserNotAuth
 	}
 
 	err = h.requestAndCacheUser(id)
 	if err == server.ErrUserNotFound {
+		log.Printf("CACHE: WARNING: Authorized user was not found in the database when trying to update cache, destroying user's session")
+
 		delete(session.Values, USER_ID_SESSION_KEY)
 		_ = session.Save(r, w)
 		// fallthough
 	} else if err != nil {
-		log.Printf("ERROR: Failed to cache authorized user info: %s", err)
+		log.Printf("CACHE: ERROR: Failed to cache authorized user info: %s", err)
 		return err
 	}
 
@@ -80,6 +94,7 @@ func (h Handler) requestAndCacheUser(id uint) (err error) {
 		return err
 	}
 
+	log.Printf("CACHE: INFO: Updated auth user cache: %d, %s", user.Id, user.Nickname)
 	h.cache.Set(fmtUserCacheKey(id), user, time.Minute)
 	return nil
 }

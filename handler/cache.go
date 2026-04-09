@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"ohmysmal/database"
+	"ohmysmal/server"
 	"reflect"
 	"strings"
 	"time"
@@ -62,7 +62,7 @@ func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session
 	}
 
 	err = h.requestAndCacheUser(id)
-	if err == database.ErrUserNotFound {
+	if err == server.ErrUserNotFound {
 		delete(session.Values, USER_ID_SESSION_KEY)
 		_ = session.Save(r, w)
 		// fallthough
@@ -75,7 +75,7 @@ func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session
 }
 
 func (h Handler) requestAndCacheUser(id uint) (err error) {
-	user, err := database.RequestUserById(h.db, id)
+	user, err := server.RequestUserById(h.db, id)
 	if err != nil {
 		return err
 	}

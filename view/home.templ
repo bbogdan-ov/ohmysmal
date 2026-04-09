@@ -3,11 +3,11 @@ package view
 import (
 	"fmt"
 
-	"ohmysmal/database"
+	"ohmysmal/server"
 	"ohmysmal/consts"
 )
 
-templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
+templ HomePage(user server.User, exists bool, snippets []server.Snippet) {
 	@page("home") {
 		<div class="container">
 			if exists {
@@ -33,14 +33,14 @@ templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
 	}
 }
 
-templ feed(snippets []database.Snippet) {
+templ feed(snippets []server.Snippet) {
 	<div class="feed" role="feed">
 		for _, s := range snippets {
 			@snippet(s)
 		}
 	</div>
 }
-templ snippet(s database.Snippet) {
+templ snippet(s server.Snippet) {
 	<article class="snippet">
 		<p>
 			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>

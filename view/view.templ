@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"ohmysmal/database"
+	"ohmysmal/server"
 )
 
 templ SnippetFlowerButton(id uuid.UUID, n uint, active bool) {
@@ -29,7 +29,7 @@ templ Error(msg string) {
 	<p class="message error">{msg}</p>
 }
 
-templ header(user database.User) {
+templ header(user server.User) {
 	<header class="header">
 		<span>{user.Nickname}</span>
 		<a href="" hx-post="/api/logout" title="Logout">@icon("logout")</a>

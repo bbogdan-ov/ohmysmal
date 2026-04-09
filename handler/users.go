@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"ohmysmal/consts"
-	"ohmysmal/database"
+	"ohmysmal/server"
 )
 
 func (h Handler) HandleApiLogin(w http.ResponseWriter, r *http.Request) {
@@ -80,8 +80,8 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// Request a user with the received nickname.
-	user, err := database.RequestUserByNickname(h.db, nickname)
-	if err == database.ErrUserNotFound {
+	user, err := server.RequestUserByNickname(h.db, nickname)
+	if err == server.ErrUserNotFound {
 		return UserError{INVALID_MSG}
 	} else if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// Check whether the nickname is taken.
-	taken, err := database.IsNicknameTaken(h.db, nickname)
+	taken, err := server.IsNicknameTaken(h.db, nickname)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 		return UserError{"This nickname is already taken by someone else :("}
 	}
 
-	// Insert user to the database.
+	// Insert user to the server.
 	result, err := h.db.Exec("INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
 	if err != nil {
 		return err
@@ -200,21 +200,21 @@ func (h Handler) authorizedUserId(session *sessions.Session) (id uint, found boo
 
 // Returns the authorized user. The info is stored in the cache,
 // it may be outdated but that's fine i guess.
-func (h Handler) authorizedUser(session *sessions.Session) (user database.User, found bool) {
+func (h Handler) authorizedUser(session *sessions.Session) (user server.User, found bool) {
 	id, found := h.authorizedUserId(session)
 	if !found {
-		return database.User{}, false
+		return server.User{}, false
 	}
 
 	value, found := h.cache.Get(fmtUserCacheKey(id))
 	if value == nil {
-		return database.User{}, false
+		return server.User{}, false
 	}
 
-	user, ok := value.(database.User)
+	user, ok := value.(server.User)
 	if !ok {
 		log.Printf("ERROR: Stored user info in the cache is of an invalid type (%s)", reflect.TypeOf(value))
-		return database.User{}, false
+		return server.User{}, false
 	} else {
 		return user, ok
 	}

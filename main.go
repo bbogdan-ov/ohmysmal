@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
-	"ohmysmal/database"
+	"ohmysmal/server"
 	"ohmysmal/handler"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	store := sessions.NewCookieStore([]byte("secret")) // TODO: pass a secret key through env vars.
 
 	// Setup database.
-	db := database.Connect()
+	db := server.ConnectDatabase()
 	defer db.Close()
 
 	h := handler.New(db, cache, store)

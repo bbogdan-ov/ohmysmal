@@ -1,4 +1,4 @@
-package database
+package server
 
 import (
 	"database/sql"
@@ -63,7 +63,7 @@ type Comment struct {
 	AuthorNickname string // Joined.
 }
 
-func Connect() *sql.DB {
+func ConnectDatabase() *sql.DB {
 	db, err := sql.Open("mysql", SOURCE_NAME)
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %s", err)

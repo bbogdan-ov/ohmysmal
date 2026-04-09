@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
-	"ohmysmal/database"
+	"ohmysmal/server"
 	"ohmysmal/view"
 )
 
@@ -77,8 +77,8 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, ok := h.authorizedUser(session)
 
-	snippets := make([]database.Snippet, 0, 20)
-	err := database.RequestSnippets(h.db, &snippets, user.Id, ok)
+	snippets := make([]server.Snippet, 0, 20)
+	err := server.RequestSnippets(h.db, &snippets, user.Id, ok)
 	if err != nil {
 		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
 		// fallthough
@@ -96,8 +96,8 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUser(session)
 
-	var snippet database.Snippet
-	var comments []database.Comment
+	var snippet server.Snippet
+	var comments []server.Comment
 	found := false
 
 	// TODO: refactor this.
@@ -105,15 +105,15 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	if idStr != "" {
 		snippetId, err := uuid.Parse(idStr)
 		if err == nil {
-			snippet, err = database.RequestSnippet(h.db, snippetId, user.Id, authed)
+			snippet, err = server.RequestSnippet(h.db, snippetId, user.Id, authed)
 			if err == sql.ErrNoRows {
 				// fallthough and do nothing
 			} else if err != nil {
 				Error(w, err)
 				return
 			} else {
-				comments = make([]database.Comment, 0, 20)
-				err = database.RequestSnippetComments(h.db, snippetId, &comments)
+				comments = make([]server.Comment, 0, 20)
+				err = server.RequestSnippetComments(h.db, snippetId, &comments)
 				if err != nil {
 					Error(w, err)
 					return

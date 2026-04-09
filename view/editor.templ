@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"ohmysmal/consts"
-	"ohmysmal/database"
+	"ohmysmal/server"
 )
 
 templ EditorPage() {
@@ -61,7 +61,7 @@ templ EditorPage() {
 	</html>
 }
 
-templ commentsList(s database.Snippet, user database.User, comments []database.Comment) {
+templ commentsList(s server.Snippet, user server.User, comments []server.Comment) {
 	<div class="comments">
 		<form
 			class="form"

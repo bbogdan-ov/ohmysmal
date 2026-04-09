@@ -1,4 +1,5 @@
 import { initCompiler } from "./compiler.js";
+import "./editor_syntax.js";
 
 const DEFAULT_CODE = `\
 // hello
@@ -145,6 +146,7 @@ function initEditor() {
 	const stats = document.getElementById("editor-stats");
 
 	const editor = CodeMirror(wrapper, {
+		mode: "uxnsmal",
 		lineNumbers: true,
 		indentUnit: 4,
 		tabSize: 4,
@@ -152,12 +154,14 @@ function initEditor() {
 		smartIndent: true,
 		autofocus: true,
 		showTrailingSpace: true,
+		fixedGutter: false,
+		lineWrapping: true,
 		value: DEFAULT_CODE,
 	});
 
 	function updateStats() {
 		const { line, ch } = editor.getCursor();
-		stats.textContent = `line ${line+1} : char ${ch+1}`;
+		stats.textContent = `${line+1}:${ch+1}`;
 	}
 
 	editor.on("cursorActivity", updateStats);

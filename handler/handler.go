@@ -125,7 +125,8 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = found
-	v := templ.Handler(view.EditorPage(snippet, user, authed, comments))
+	_ = snippet
+	v := templ.Handler(view.EditorPage())
 	v.ServeHTTP(w, r)
 }
 

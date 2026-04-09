@@ -7,14 +7,7 @@ import (
 	"ohmysmal/database"
 )
 
-templ EditorPage(
-	s database.Snippet,
-	user database.User,
-	authed bool,
-	comments []database.Comment,
-) {
-	{{ hasSnippet := s.Title != "" }}
-
+templ EditorPage() {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -27,59 +20,15 @@ templ EditorPage(
 	<body>
 		<div class="editor-page">
 			<div class="editor-container">
-				if authed || hasSnippet {
-					<div class="statusbar">
-						<form id="editor-post-form">
-							if authed {
-								<input
-									type="text"
-									name="title"
-									if hasSnippet {
-										placeholder={s.Title}
-									} else {
-										placeholder="..."
-									}
-									required
-									maxlength={consts.MAX_SNIPPET_TITLE_LEN}
-								>
-							} else {
-								<span>{s.Title}</span>
-							}
-							if hasSnippet {
-								<span class="text-muted">by {s.AuthorNickname}</span>
-							}
-							if authed {
-								<button class="button" type="submit">
-									if hasSnippet {
-										remix as {user.Nickname}
-									} else {
-										post as {user.Nickname}
-									}
-								</button>
-							}
-						</form>
-
-						if hasSnippet && authed {
-							@SnippetFlowerButton(s.Id, s.Flowers, s.AuthUserFlowered)
-						}
-					</div>
-				}
 				<div id="editor-wrapper">/* the text editor goes here */</div>
+
 				<div class="statusbar">
-					<span></span>
-					<span id="editor-stats" class="stats">/**/</span>
+					<span>/* dummy */</span>
+					<span id="editor-stats" class="muted">/**/</span>
 				</div>
 			</div>
 
 			<div class="editor-sidebar">
-				<div class="statusbar">
-					<a href="/">go home</a>
-				</div>
-
-				if hasSnippet && authed {
-					@commentsList(s, user, comments)
-				}
-
 				<div id="editor-problems">
 				</div>
 			</div>

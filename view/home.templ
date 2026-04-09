@@ -44,7 +44,7 @@ templ snippet(s database.Snippet) {
 	<article class="snippet">
 		<p>
 			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>
-			<span class="text-muted">by {s.AuthorNickname}</span>
+			<span class="muted">by {s.AuthorNickname}</span>
 		</p>
 
 		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>

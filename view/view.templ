@@ -6,52 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"ohmysmal/database"
-	"ohmysmal/consts"
 )
-
-templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
-	@page("home") {
-		<div class="container">
-			<h1>oh my smal</h1>
-
-			if exists {
-				@profile(user)
-			} else {
-				<div class="flex gap-2" style="margin-bottom: 2rem">
-					@loginForm()
-					@registerForm()
-				</div>
-			}
-
-			<a href="/editor">open editor</a>
-
-			@feed(snippets)
-		</div>
-	}
-}
-
-templ profile(user database.User) {
-	<h2 style="margin-bottom: 2rem">hi, {user.Nickname}!</h2>
-	<a href="" hx-post="/api/logout">logout</a>
-}
-
-templ feed(snippets []database.Snippet) {
-	<div class="feed" role="feed">
-		for _, s := range snippets {
-			@snippet(s)
-		}
-	</div>
-}
-templ snippet(s database.Snippet) {
-	<article class="snippet">
-		<p>
-			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>
-			<span class="text-muted">by {s.AuthorNickname}</span>
-		</p>
-
-		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>
-	</article>
-}
 
 templ SnippetFlowerButton(id uuid.UUID, n uint, active bool) {
 	<button
@@ -67,72 +22,37 @@ templ SnippetFlowerButton(id uuid.UUID, n uint, active bool) {
 	</button>
 }
 
-templ loginForm() {
-	<form
-		class="form"
-		hx-post="/api/login"
-		hx-swap="innerHTML"
-		hx-target="#login-result"
-		hx-target-error="#login-result"
-	>
-		<span id="login-result"></span>
-		<input
-			type="text"
-			name="nickname"
-			placeholder="Nickname"
-			required
-			maxlength={consts.MAX_NICKNAME_LEN}
-		/>
-		<input
-			type="password"
-			name="password"
-			placeholder="Password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<button class="button" type="submit">login</button>
-	</form>
-}
-
-templ registerForm() {
-	<form
-		class="form"
-		hx-post="/api/register"
-		hx-swap="innerHTML"
-		hx-target="#register-result"
-		hx-target-error="#register-result"
-	>
-		<span id="register-result"></span>
-		<input
-			type="text"
-			name="nickname"
-			placeholder="Nickname"
-			required
-			maxlength={consts.MAX_NICKNAME_LEN}
-		/>
-		<input
-			type="password"
-			name="password"
-			placeholder="Password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<input
-			type="password"
-			name="password-confirm"
-			placeholder="Repeat the password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<button class="button" type="submit">register</button>
-	</form>
-}
-
 templ Ok(msg string) {
 	<p class="message ok">{msg}</p>
 }
 templ Error(msg string) {
 	<p class="message error">{msg}</p>
+}
+
+templ header(user database.User) {
+	<header class="header">
+		<span>{user.Nickname}</span>
+		<a href="" hx-post="/api/logout" title="Logout">@icon("logout")</a>
+	</header>
+}
+templ footer() {
+	<footer class="footer">
+		<div class="flex-column">
+			<a href="/">oh my smal...</a>
+			<i class="text-muted">No warranties, no bullshit, no alarms.</i>
+			<i class="text-muted">Cookies are only used to store the current session.</i>
+		</div>
+
+		<div class="flex-column items-end">
+			<a href="https://github.com/bbogdan-ov/ohmysmal" target="_blank">website source code</a>
+			<a href="https://github.com/bbogdan-ov/uxnsmal" target="_blank">UXNSMAL source code</a>
+			<a href="https://wiki.xxiivv.com/site/uxn.html" target="_blank">UXN wiki</a>
+		</div>
+	</footer>
+}
+
+templ icon(name string) {
+	<div class={ fmt.Sprintf("icon icon-%s", name) }></div>
 }
 
 templ head(title string) {

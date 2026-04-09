@@ -1,0 +1,113 @@
+package view
+
+import (
+	"fmt"
+
+	"ohmysmal/database"
+	"ohmysmal/consts"
+)
+
+templ HomePage(user database.User, exists bool, snippets []database.Snippet) {
+	@page("home") {
+		<div class="container">
+			if exists {
+				@header(user)
+			}
+
+			<div class="welcome-logo"></div>
+			<i class="text-center text-yellow">— Feel UXN inside yourself. —</i>
+
+			if !exists {
+				<div class="flex gap-2" style="margin-bottom: 2rem">
+					@loginForm()
+					@registerForm()
+				</div>
+			}
+
+			<a href="/editor">open editor</a>
+
+			@feed(snippets)
+
+			@footer()
+		</div>
+	}
+}
+
+templ feed(snippets []database.Snippet) {
+	<div class="feed" role="feed">
+		for _, s := range snippets {
+			@snippet(s)
+		}
+	</div>
+}
+templ snippet(s database.Snippet) {
+	<article class="snippet">
+		<p>
+			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>
+			<span class="text-muted">by {s.AuthorNickname}</span>
+		</p>
+
+		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>
+	</article>
+}
+
+templ loginForm() {
+	<form
+		class="form"
+		hx-post="/api/login"
+		hx-swap="innerHTML"
+		hx-target="#login-result"
+		hx-target-error="#login-result"
+	>
+		<span id="login-result"></span>
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<button class="button" type="submit">login</button>
+	</form>
+}
+
+templ registerForm() {
+	<form
+		class="form"
+		hx-post="/api/register"
+		hx-swap="innerHTML"
+		hx-target="#register-result"
+		hx-target-error="#register-result"
+	>
+		<span id="register-result"></span>
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<input
+			type="password"
+			name="password-confirm"
+			placeholder="Repeat the password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<button class="button" type="submit">register</button>
+	</form>
+}

@@ -121,11 +121,7 @@ async function init() {
 	const params = new URLSearchParams(new URL(window.location.href).search);
 	const snippetId = params.get("snippet");
 	if (snippetId != null) {
-		setLoadingText("Loading the snippet source code...");
-		const res = await fetch(`/api/snippet?id=${snippetId}`);
-		const text = await res.text();
-
-		editor.setValue(text);
+		fetchSnippet(editor, snippetId);
 	}
 
 	setLoadingText("Compiling the snippet...");
@@ -139,6 +135,19 @@ async function init() {
 
 	setLoadingText("Done!");
 	setLoadingText(null);
+}
+
+async function fetchSnippet(editor, id) {
+	setLoadingText("Loading the snippet source code...");
+
+	const res = await fetch(`/api/snippet?id=${id}`);
+	const text = await res.text();
+	if (!res.ok) {
+		editor.setValue(`// ${text}\n// Failed to load the snippet...`);
+		return;
+	}
+
+	editor.setValue(text);
 }
 
 function initEditor() {

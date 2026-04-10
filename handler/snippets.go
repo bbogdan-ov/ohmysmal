@@ -1,16 +1,18 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
-	"log"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -117,7 +119,10 @@ func (h Handler) snippetSource(w http.ResponseWriter, r *http.Request) (err erro
 		return BadRequestError{err.Error()}
 	}
 
-	row := h.db.QueryRow("SELECT id FROM snippets WHERE id = ?", id)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	row := h.db.QueryRowContext(ctx, "SELECT id FROM snippets WHERE id = ?", id)
 
 	err = row.Err()
 	if err == sql.ErrNoRows {
@@ -168,8 +173,11 @@ func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers ui
 		return uuid.UUID{}, 0, false, err
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
 	// Request the current number of flowers in the snippet.
-	err = h.db.QueryRow("SELECT flowers FROM snippets WHERE id = ?", idBytes).Scan(&flowers)
+	err = h.db.QueryRowContext(ctx, "SELECT flowers FROM snippets WHERE id = ?", idBytes).Scan(&flowers)
 	if err == sql.ErrNoRows {
 		return uuid.UUID{}, 0, false, BadRequestError{"no snippet with this id"}
 	} else if err != nil {
@@ -181,7 +189,11 @@ func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers ui
 	if err != nil {
 		return uuid.UUID{}, 0, false, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
 
 	// Give a flower to the snippet if the user haven't gave it before.
 	// The number of flowers in the snippet row will be updated automatically because of triggers.

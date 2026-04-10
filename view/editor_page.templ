@@ -11,9 +11,9 @@ templ EditorPage() {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
-		<link rel="stylesheet" href="static/lib/codemirror/codemirror.css">
-		<script src="static/lib/codemirror/codemirror.js"></script>
-		<script src="static/lib/codemirror/addon-trailingspace.js"></script>
+		<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
+		<script src="/static/lib/codemirror/codemirror.js"></script>
+		<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
 
 		@head("editor")
 	</head>
@@ -37,7 +37,7 @@ templ EditorPage() {
 				<div class="display-stats stats">
 					<span id="display-zoom-button" class="link-ish">x1</span>
 				</div>
-				<canvas id="display"></canvas>
+				<canvas id="display" class="uxn-canvas"></canvas>
 			</div>
 		</div>
 
@@ -45,18 +45,9 @@ templ EditorPage() {
 			<span id="loader-text">/**/</span>
 		</div>
 
-		<script src="static/lib/uxn5/uxn.js"></script>
-		<script src="static/lib/uxn5/uxn-wasm.js"></script>
-		<script src="static/lib/uxn5/emu.js"></script>
-		<script src="static/lib/uxn5/devices/system.js"></script>
-		<script src="static/lib/uxn5/devices/console.js"></script>
-		<script src="static/lib/uxn5/devices/controller.js"></script>
-		<script src="static/lib/uxn5/devices/datetime.js"></script>
-		<script src="static/lib/uxn5/devices/mouse.js"></script>
-		<script src="static/lib/uxn5/devices/screen.js"></script>
-		<script src="static/lib/uxn5/boot.js"></script>
+		@uxnScripts()
 
-		<script src="static/js/editor.js" type="module"></script>
+		<script src="/static/js/editor_page.js" type="module"></script>
 	</body>
 	</html>
 }
@@ -95,4 +86,17 @@ templ Comment(author string, text string) {
 	<div class="comment">
 		<b>{author}</b>: <span>{text}</span>
 	</div>
+}
+
+templ uxnScripts() {
+	<script src="/static/lib/uxn5/uxn.js"></script>
+	<script src="/static/lib/uxn5/uxn-wasm.js"></script>
+	<script src="/static/lib/uxn5/emu.js"></script>
+	<script src="/static/lib/uxn5/devices/system.js"></script>
+	<script src="/static/lib/uxn5/devices/console.js"></script>
+	<script src="/static/lib/uxn5/devices/controller.js"></script>
+	<script src="/static/lib/uxn5/devices/datetime.js"></script>
+	<script src="/static/lib/uxn5/devices/mouse.js"></script>
+	<script src="/static/lib/uxn5/devices/screen.js"></script>
+	<script src="/static/lib/uxn5/boot.js"></script>
 }

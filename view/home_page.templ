@@ -43,7 +43,7 @@ templ feed(snippets []server.Snippet) {
 templ snippet(s server.Snippet) {
 	<article class="snippet">
 		<p>
-			<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>{s.Title}</a>
+			<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
 			<span class="muted">by {s.AuthorNickname}</span>
 		</p>
 

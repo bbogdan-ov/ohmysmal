@@ -1,0 +1,35 @@
+package view
+
+import (
+	"fmt"
+
+	"ohmysmal/server"
+)
+
+templ SnippetPage(snippet server.MaybeSnippet) {
+	if !snippet.Ok {
+		@page("snippet") {
+			<div class="container">
+				<h1>Failed to load snippet :(</h1>
+				<a href="/">go home</a>
+			</div>
+		}
+	} else {
+		@snippetFoundPage(snippet.Snippet)
+	}
+}
+
+templ snippetFoundPage(snippet server.Snippet) {
+	// TODO: show a title and an author of the snippet.
+	@page("snippet") {
+		<div class="container">
+			<canvas id="display" class="uxn-canvas"></canvas>
+			<a href={ fmt.Sprintf("/editor?snippet=%s", snippet.Id) }>open in the editor</a>
+			<span>TODO:</span>
+		</div>
+
+		@uxnScripts()
+
+		<script src="/static/js/snippet_page.js" type="module"></script>
+	}
+}

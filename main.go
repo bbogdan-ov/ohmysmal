@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,6 +16,10 @@ import (
 )
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	net.DefaultResolver = &net.Resolver{PreferGo: false}
 
 	// Setup cache.
@@ -32,6 +37,7 @@ func main() {
 	// Handle routes.
 	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleHome))
 	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleEditor))
+	http.HandleFunc("/snippet", h.UserCacheMiddleware(h.HandleSnippet))
 	http.HandleFunc("/hey", h.UserCacheMiddleware(h.HandleHey))
 
 	http.HandleFunc("/api/login", h.UserCacheMiddleware(h.HandleApiLogin))

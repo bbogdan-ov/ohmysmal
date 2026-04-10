@@ -30,6 +30,7 @@ function Screen(emu)
 		this.display.addEventListener("pointerdown", emu.mouse.on_down)
 		this.display.addEventListener("pointerup", emu.mouse.on_up)
 		this.display.addEventListener("wheel", emu.mouse.on_scroll)
+		this.display.addEventListener("contextmenu", e => e.preventDefault())
 		this.set_zoom(1)
 		this.resize(512, 320, 1)
 	}

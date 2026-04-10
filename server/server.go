@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,6 +57,11 @@ type Snippet struct {
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
 }
 
+type MaybeSnippet struct {
+	Snippet
+	Ok bool
+}
+
 type Comment struct {
 	Id             uint
 	AuthorId       uint
@@ -83,8 +90,11 @@ func ConnectDatabase() *sql.DB {
 	return db
 }
 
-func requestUserWith(db *sql.DB, condition string, params ...any) (user User, err error) {
-	row := db.QueryRow("SELECT * FROM users_with_enums "+condition, params...)
+func requestUserWith(r *http.Request, db *sql.DB, condition string, params ...any) (user User, err error) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	row := db.QueryRowContext(ctx, "SELECT * FROM users_with_enums "+condition, params...)
 	err = row.Scan(&user.Id, &user.Nickname, &user.Password, &user.Role, &user.Status)
 
 	if err == sql.ErrNoRows {
@@ -96,16 +106,19 @@ func requestUserWith(db *sql.DB, condition string, params ...any) (user User, er
 	return user, nil
 }
 
-func RequestUserById(db *sql.DB, id uint) (user User, err error) {
-	return requestUserWith(db, "WHERE id = ?", id)
+func RequestUserById(r *http.Request, db *sql.DB, id uint) (user User, err error) {
+	return requestUserWith(r, db, "WHERE id = ?", id)
 }
 
-func RequestUserByNickname(db *sql.DB, nickname string) (user User, err error) {
-	return requestUserWith(db, "WHERE nickname = ?", nickname)
+func RequestUserByNickname(r *http.Request, db *sql.DB, nickname string) (user User, err error) {
+	return requestUserWith(r, db, "WHERE nickname = ?", nickname)
 }
 
-func IsNicknameTaken(db *sql.DB, nickname string) (taken bool, err error) {
-	row := db.QueryRow("SELECT id FROM users WHERE nickname = ?", nickname)
+func IsNicknameTaken(r *http.Request, db *sql.DB, nickname string) (taken bool, err error) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	row := db.QueryRowContext(ctx, "SELECT id FROM users WHERE nickname = ?", nickname)
 
 	var id int
 	err = row.Scan(&id)
@@ -159,17 +172,21 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 }
 
 func RequestSnippet(
+	r *http.Request,
 	db *sql.DB,
 	id uuid.UUID,
 	authUserId uint,
 	hasAuthUser bool,
 ) (snippet Snippet, err error) {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
 	var row *sql.Row
 
 	if hasAuthUser {
 		// Select all snippets + add a new column "flowered" that indicates
 		// wheter the user with id `authUserId` flowered this snippet.
-		row = db.QueryRow(`
+		row = db.QueryRowContext(ctx, `
 		SELECT
 			snippets_with_author.*,
 			(flowers.user_id IS NOT NULL) as flowered
@@ -178,10 +195,11 @@ func RequestSnippet(
 		WHERE id = ?
 		`, authUserId, id[:])
 	} else {
-		row = db.QueryRow("SELECT *, false as flowered FROM snippets_with_author WHERE id = ?", id[:])
+		row = db.QueryRowContext(ctx, "SELECT *, false as flowered FROM snippets_with_author WHERE id = ?", id[:])
 	}
 
-	if RowScanSnippet(row, &snippet) != nil {
+	err = RowScanSnippet(row, &snippet)
+	if err != nil {
 		return snippet, err
 	}
 

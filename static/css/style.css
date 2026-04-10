@@ -165,10 +165,8 @@ body {
 
 	canvas {
 		outline: 1px solid var(--background);
-		background: #000;
-		image-rendering: pixelated;
-		cursor: none;
 	}
+
 	.display-stats {
 		display: flex;
 		align-items: center;
@@ -321,6 +319,12 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	0%, 100% { background-position: 0 0; }
 	33% { background-position: 0 400px; }
 	66% { background-position: 0 800px; }
+}
+
+.uxn-canvas {
+	background: #000;
+	image-rendering: pixelated;
+	cursor: none;
 }
 
 h1, h2, h3, h4 {

@@ -73,7 +73,7 @@ func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session
 		return ErrUserNotAuth
 	}
 
-	err = h.requestAndCacheUser(id)
+	err = h.requestAndCacheUser(r, id)
 	if err == server.ErrUserNotFound {
 		log.Printf("CACHE: WARNING: Authorized user was not found in the database when trying to update cache, destroying user's session")
 
@@ -88,8 +88,8 @@ func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session
 	return nil
 }
 
-func (h Handler) requestAndCacheUser(id uint) (err error) {
-	user, err := server.RequestUserById(h.db, id)
+func (h Handler) requestAndCacheUser(r *http.Request, id uint) (err error) {
+	user, err := server.RequestUserById(r, h.db, id)
 	if err != nil {
 		return err
 	}

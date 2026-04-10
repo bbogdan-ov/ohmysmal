@@ -1,5 +1,5 @@
 import { initCompiler } from "./compiler.js";
-import "./editor_syntax.js";
+import "./syntax.js";
 
 const DEFAULT_CODE = `\
 // hello
@@ -121,7 +121,7 @@ async function init() {
 	const params = new URLSearchParams(new URL(window.location.href).search);
 	const snippetId = params.get("snippet");
 	if (snippetId != null) {
-		fetchSnippet(editor, snippetId);
+		await fetchSnippet(editor, snippetId);
 	}
 
 	setLoadingText("Compiling the snippet...");

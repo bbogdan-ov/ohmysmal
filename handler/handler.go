@@ -93,40 +93,44 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	v := templ.Handler(view.EditorPage())
+	v.ServeHTTP(w, r)
+}
+
+func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "GET") {
+		return
+	}
+
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUser(session)
 
 	var snippet server.Snippet
-	var comments []server.Comment
-	found := false
+	ok := true
 
-	// TODO: refactor this.
-	idStr := r.URL.Query().Get("snippet")
-	if idStr != "" {
-		snippetId, err := uuid.Parse(idStr)
-		if err == nil {
-			snippet, err = server.RequestSnippet(h.db, snippetId, user.Id, authed)
-			if err == sql.ErrNoRows {
-				// fallthough and do nothing
-			} else if err != nil {
-				Error(w, err)
-				return
-			} else {
-				comments = make([]server.Comment, 0, 20)
-				err = server.RequestSnippetComments(h.db, snippetId, &comments)
-				if err != nil {
-					Error(w, err)
-					return
-				}
-
-				found = true
-			}
-		}
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		// No id, just redirect.
+		Redirect(w, "/")
+		return
 	}
 
-	_ = found
-	_ = snippet
-	v := templ.Handler(view.EditorPage())
+	snippetId, err := uuid.Parse(idStr)
+	if err != nil {
+		// Invalid id, just redirect.
+		Redirect(w, "/")
+		return
+	}
+
+	snippet, err = server.RequestSnippet(r, h.db, snippetId, user.Id, authed)
+	if err == sql.ErrNoRows {
+		ok = false
+	} else if err != nil {
+		Error(w, err)
+		return
+	}
+
+	v := templ.Handler(view.SnippetPage(server.MaybeSnippet{Snippet: snippet, Ok: ok}))
 	v.ServeHTTP(w, r)
 }
 

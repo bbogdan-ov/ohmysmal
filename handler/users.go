@@ -81,7 +81,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// Request a user with the received nickname.
-	user, err := server.RequestUserByNickname(h.db, nickname)
+	user, err := server.RequestUserByNickname(r, h.db, nickname)
 	if err == server.ErrUserNotFound {
 		return UserError{INVALID_MSG}
 	} else if err != nil {
@@ -149,7 +149,7 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// Check whether the nickname is taken.
-	taken, err := server.IsNicknameTaken(h.db, nickname)
+	taken, err := server.IsNicknameTaken(r, h.db, nickname)
 	if err != nil {
 		log.Printf("USERS: ERROR: Registration failed: Failed to check for nickname existance: %s", err)
 		return err

@@ -14,45 +14,6 @@ import (
 	"ohmysmal/server"
 )
 
-func (h Handler) HandleApiLogin(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
-
-	err := h.login(w, r)
-	if err == ErrUserAlreadyAuth {
-		// fallthough
-	} else if err != nil {
-		Error(w, err)
-		return
-	}
-
-	Redirect(w, "/")
-}
-func (h Handler) HandleApiRegister(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
-
-	err := h.register(w, r)
-	if err == ErrUserAlreadyAuth {
-		// fallthough
-	} else if err != nil {
-		Error(w, err)
-		return
-	}
-
-	Redirect(w, "/")
-}
-func (h Handler) HandleApiLogout(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
-
-	h.logout(w, r)
-	Redirect(w, "/")
-}
-
 func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 	const INVALID_MSG = "Invalid nickname or password."
 

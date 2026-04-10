@@ -1,0 +1,27 @@
+package view
+
+templ ErrorPage(status int, msg string) {
+	@page("something went wrong...") {
+		<div class="container gap-2">
+			<a href="/" title="Go home">@icon("home")</a>
+
+			<h1>{status}</h1>
+			<h2>Something went horribly wrong!</h2>
+
+			<hr />
+			<p>{msg}</p>
+			<hr />
+
+			<div class="flex-column">
+				<h3>Consider...</h3>
+
+				<ul>
+					<li><a href="/">Going home</a></li>
+					<li><a href="http://github.com/bbogdan-ov/ohmysmal/issues" target="_blank">Opening an issue!</a></li>
+				</ul>
+			</div>
+
+			@footer()
+		</div>
+	}
+}

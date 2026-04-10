@@ -14,53 +14,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
 	"ohmysmal/consts"
-	"ohmysmal/view"
 )
 
 const SNIPPETS_DIR = "./snippets"
-
-func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		id, err := h.postSnippet(r)
-		if err != nil {
-			Error(w, err)
-			return
-		}
-
-		Redirect(w, fmt.Sprintf("/snippet?id=%s", id))
-	case "GET":
-		err := h.snippetSource(w, r)
-		if err != nil {
-			Error(w, err)
-			return
-		}
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
-
-	snippetId, count, flowered, err := h.flowerSnippet(r)
-	if err != nil {
-		// TODO: when user is not authorized we should show some sort of an
-		// alert that says "hey, you should sign in".
-		Error(w, err)
-		return
-	}
-
-	// Send the updated number of flowers back.
-	v := templ.Handler(view.SnippetFlowers(snippetId, count, flowered))
-	v.ServeHTTP(w, r)
-}
 
 func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 	session := h.DefaultSession(r)

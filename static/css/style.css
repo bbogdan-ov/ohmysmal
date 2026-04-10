@@ -72,6 +72,7 @@ body {
 /* -------------------- */
 
 .feed {
+	padding-bottom: 2rem;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 	gap: 1rem;
@@ -416,6 +417,7 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 .container {
 	width: 100%;
 	max-width: 800px;
+	min-height: 100vh;
 	padding: 0 10px;
 	padding-top: 3rem;
 
@@ -438,7 +440,7 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 
 	display: flex;
 	justify-content: space-between;
-	margin-top: 2rem;
+	margin-top: auto;
 
 	border-top: 1px dotted var(--muted);
 }

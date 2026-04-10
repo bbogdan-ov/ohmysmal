@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
+	"database/sql"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
@@ -17,39 +15,6 @@ import (
 	"ohmysmal/server"
 	"ohmysmal/view"
 )
-
-const (
-	SESSION_NAME        = "ohmysmal"
-	USER_ID_SESSION_KEY = "id"
-)
-
-var (
-	ErrUserAlreadyAuth = BadRequestError{"user is already authorized"}
-	ErrUserNotAuth     = BadRequestError{"user is not authorized"}
-	ErrNicknameInvalid = BadRequestError{"nickname is invalid"}
-	ErrNicknameTooLong = BadRequestError{"nickname is too long"}
-)
-
-// NOTE: any other `error` types are "internal server errors".
-
-// This error returns whenever a user did something wrong, for example tried to
-// log in with an incorrect nickname or password.
-type UserError struct {
-	Message string
-}
-
-func (e UserError) Error() string {
-	return e.Message
-}
-
-// An invalid request was received.
-type BadRequestError struct {
-	Message string
-}
-
-func (e BadRequestError) Error() string {
-	return e.Message
-}
 
 type Handler struct {
 	db    *sql.DB
@@ -62,7 +27,7 @@ func New(db *sql.DB, cache *cache.Cache, store *sessions.CookieStore) Handler {
 }
 
 // --------------------
-// Pages
+// Pages.
 // --------------------
 
 func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
@@ -80,9 +45,9 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	snippets := make([]server.Snippet, 0, 20)
 	err := server.RequestSnippets(h.db, &snippets, user.Id, ok)
 	if err != nil {
-		// TODO: show error to the user.
 		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
-		// fallthough
+		ErrorPage(w, r, err)
+		return
 	}
 
 	v := templ.Handler(view.HomePage(user, ok, snippets))
@@ -132,7 +97,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	if err == sql.ErrNoRows {
 		ok = false
 	} else if err != nil {
-		Error(w, err)
+		ErrorPage(w, r, err)
 		return
 	}
 
@@ -141,7 +106,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 		comments = make([]server.Comment, 0, 10)
 		err = server.RequestSnippetComments(h.db, snippetId, &comments)
 		if err != nil {
-			Error(w, err)
+			ErrorPage(w, r, err)
 			return
 		}
 	}
@@ -164,75 +129,107 @@ func (h Handler) HandleHey(w http.ResponseWriter, r *http.Request) {
 }
 
 // --------------------
-// Utils
+// Users API.
 // --------------------
 
-func (h Handler) DefaultSession(r *http.Request) *sessions.Session {
-	s, err := h.store.Get(r, SESSION_NAME)
-	if err != nil {
-		log.Printf("ERROR: Failed to get a session, creating a new one: %s", err)
+func (h Handler) HandleApiLogin(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	err := h.login(w, r)
+	if err == ErrUserAlreadyAuth {
 		// fallthough
+	} else if err != nil {
+		Error(w, err)
+		return
 	}
-	return s
+
+	Redirect(w, "/")
+}
+func (h Handler) HandleApiRegister(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	err := h.register(w, r)
+	if err == ErrUserAlreadyAuth {
+		// fallthough
+	} else if err != nil {
+		Error(w, err)
+		return
+	}
+
+	Redirect(w, "/")
+}
+func (h Handler) HandleApiLogout(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	h.logout(w, r)
+	Redirect(w, "/")
 }
 
-// Parse a path value of type `uint` from a request.
-func UintPathValue(r *http.Request, name string) (uint, error) {
-	str := r.PathValue(name)
-	if str == "" {
-		return 0, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
-	}
+// --------------------
+// Snippets API.
+// --------------------
 
-	num, err := strconv.ParseUint(str, 10, 32)
-	if err != nil {
-		return 0, BadRequestError{fmt.Sprintf(`param "%s" is not a 'uint': %s`, name, err)}
-	}
+func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		id, err := h.postSnippet(r)
+		if err != nil {
+			Error(w, err)
+			return
+		}
 
-	return uint(num), nil
-}
-
-// Parse a path value of type `uuid.UUID` from a request.
-func UUIDPathValue(r *http.Request, name string) (uuid.UUID, error) {
-	str := r.PathValue(name)
-	if str == "" {
-		return uuid.UUID{}, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
-	}
-
-	id, err := uuid.Parse(str)
-	if err != nil {
-		msg := fmt.Sprintf(`param "%s" is an invalid UUID: %s`, name, err)
-		return uuid.UUID{}, BadRequestError{msg}
-	}
-
-	return id, nil
-}
-
-// Returns whether the method in a request is equal to `method`, if not,
-// returns `false` and writes `http.Error()`.
-func EnsureMethod(w http.ResponseWriter, r *http.Request, method string) bool {
-	if r.Method != method {
+		Redirect(w, fmt.Sprintf("/snippet?id=%s", id))
+	case "GET":
+		err := h.snippetSource(w, r)
+		if err != nil {
+			Error(w, err)
+			return
+		}
+	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return false
-	}
-	return true
-}
-
-// Write an error message into the response body.
-func Error(w http.ResponseWriter, err error) {
-	if errors.As(err, &UserError{}) {
-		// Making errors is ok, don't worry <3
-		http.Error(w, err.Error(), http.StatusOK)
-	} else if errors.As(err, &BadRequestError{}) {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	} else {
-		log.Printf("ERROR: Server error: %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-// Write the "HX-Redirect" (HTMX redirect) header the response body. HTMX
-// doesn't know how to work with normal "Location" header.
-func Redirect(w http.ResponseWriter, location string) {
-	w.Header().Add("HX-Redirect", location)
-	w.WriteHeader(http.StatusMovedPermanently)
+func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	snippetId, count, flowered, err := h.flowerSnippet(r)
+	if err != nil {
+		// TODO: when user is not authorized we should show some sort of an
+		// alert that says "hey, you should sign in".
+		Error(w, err)
+		return
+	}
+
+	// Send the updated number of flowers back.
+	v := templ.Handler(view.SnippetFlowers(snippetId, count, flowered))
+	v.ServeHTTP(w, r)
 }
+
+// --------------------
+// Comments API.
+// --------------------
+
+func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	author, text, err := h.postComment(r)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	v := templ.Handler(view.Comment(author, text))
+	v.ServeHTTP(w, r)
+}
+

@@ -59,8 +59,6 @@ func methodUpdatesCache(method string) bool {
 // Updates the currently authorized user cache. Cache will be updated even if
 // it is already present or it is not expired yet.
 func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session *sessions.Session) (err error) {
-	log.Printf("CACHE: INFO: Updating auth user cache...")
-
 	userId, _ := session.Values[USER_ID_SESSION_KEY]
 	if userId == nil {
 		log.Printf("CACHE: WARNING: User is not authorized, nothing to update")
@@ -94,7 +92,6 @@ func (h Handler) requestAndCacheUser(r *http.Request, id uint) (err error) {
 		return err
 	}
 
-	log.Printf("CACHE: INFO: Updated auth user cache: %d, %s", user.Id, user.Nickname)
 	h.cache.Set(fmtUserCacheKey(id), user, time.Minute)
 	return nil
 }

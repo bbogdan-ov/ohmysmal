@@ -4,27 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"ohmysmal/consts"
-	"ohmysmal/view"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/a-h/templ"
 )
-
-func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
-	}
-
-	author, text, err := h.postComment(r)
-	if err != nil {
-		Error(w, err)
-		return
-	}
-
-	v := templ.Handler(view.Comment(author, text))
-	v.ServeHTTP(w, r)
-}
 
 func (h Handler) postComment(r *http.Request) (author string, text string, err error) {
 	session := h.DefaultSession(r)

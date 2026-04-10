@@ -1,6 +1,11 @@
 package view
 
-templ EditorPage() {
+import (
+	"ohmysmal/server"
+	"ohmysmal/consts"
+)
+
+templ EditorPage(user server.MaybeUser) {
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -16,7 +21,13 @@ templ EditorPage() {
 				<div id="editor-wrapper">/* the text editor goes here */</div>
 
 				<div class="statusbar">
-					<span>/* dummy */</span>
+					<div class="row gap-2">
+						<a href="/" title="Go home">@icon("home")</a>
+						<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
+						if user.Ok {
+							<span id="publish-button" class="link-ish">publish</span>
+						}
+					</div>
 					<span id="editor-stats" class="muted">/**/</span>
 				</div>
 			</div>
@@ -33,6 +44,23 @@ templ EditorPage() {
 				<canvas id="display" class="uxn-canvas"></canvas>
 			</div>
 		</div>
+
+		if user.Ok {
+			<div class="publish-modal" id="editor-publish-modal">
+				<form
+					id="editor-publish-form"
+					class="form"
+				>
+					<textarea
+						name="title"
+						placeholder="My great snippet..."
+						required
+						maxlength={consts.MAX_SNIPPET_TITLE_LEN}
+					></textarea>
+					<button class="button" type="submit">publish as {user.Nickname}!</button>
+				</form>
+			</div>
+		}
 
 		<div id="loader">
 			<span id="loader-text">/**/</span>

@@ -52,6 +52,7 @@ type Snippet struct {
 	Flowers  uint
 	Comments uint
 	Status   SnippetStatus
+	Date     string
 
 	AuthorNickname   string // Joined.
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
@@ -72,6 +73,7 @@ type Comment struct {
 	AuthorId       uint
 	SnippetId      uuid.UUID
 	Text           string
+	Date           string
 	AuthorNickname string // Joined.
 }
 
@@ -232,7 +234,7 @@ func RequestSnippetComments(db *sql.DB, id uuid.UUID, comments *[]Comment) (err 
 			break
 		}
 
-		err = rows.Scan(&c.Id, &c.SnippetId, &c.AuthorId, &c.Text, &c.AuthorNickname)
+		err = rows.Scan(&c.Id, &c.SnippetId, &c.AuthorId, &c.Text, &c.Date, &c.AuthorNickname)
 		if err != nil {
 			return err
 		}
@@ -251,6 +253,7 @@ func RowScanSnippet(row *sql.Row, s *Snippet) error {
 		&s.Flowers,
 		&s.Comments,
 		&s.Status,
+		&s.Date,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)
@@ -263,6 +266,7 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 		&s.Flowers,
 		&s.Comments,
 		&s.Status,
+		&s.Date,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)

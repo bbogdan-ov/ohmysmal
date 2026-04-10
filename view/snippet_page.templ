@@ -146,6 +146,7 @@ templ snippetComments(
 			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
 			hx-target="#comments-list"
 			hx-swap="afterbegin"
+			hx-on::after-request="if(event.detail.successful) this.reset()"
 		>
 			<textarea
 				name="text"

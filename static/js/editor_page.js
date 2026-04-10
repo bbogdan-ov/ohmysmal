@@ -76,9 +76,15 @@ async function init() {
 	const emu = new Emu();
 	emu.init();
 
+	let publishModalOpen = false;
+	const publishModal = document.getElementById("editor-publish-modal");
+	const publishButton = document.getElementById("publish-button");
+	const runButton = document.getElementById("run-button");
+
 	// Init the text editor.
 	const editorStats = document.getElementById("editor-stats");
 	const editor = initEditor(DEFAULT_CODE);
+	let changed = false;
 
 	function updateStats() {
 		const { line, ch } = editor.getCursor();
@@ -86,6 +92,7 @@ async function init() {
 	}
 	updateStats();
 	editor.on("cursorActivity", updateStats);
+	editor.on("change", () => changed = true);
 
 	// Init display window.
 	const win = initDisplayWindow(emu, editor);
@@ -105,19 +112,19 @@ async function init() {
 		addMessage(`${line+1}:${col+1}: note: ${msg}`, "note");
 	}
 
-	let start = 0;
+	let startTime = 0;
 
 	function recompile(focus=false) {
 		problems.innerHTML = "";
 
-		start = Date.now();
+		startTime = Date.now();
 		addMessage("Compiling...")
 
 		compile(editor.doc.getValue());
 		if (focus) win.focus();
 	}
 	function load(program) {
-		const elapsed = Date.now() - start;
+		const elapsed = Date.now() - startTime;
 		addMessage(`Compiled ${program.length} bytes in ${elapsed}ms!`);
 		emu.load(program);
 	}
@@ -138,19 +145,45 @@ async function init() {
 		} catch (err) {
 			editor.setValue(`// ${err}\n// Failed to load the snippet...`);
 		}
+
+		changed = false;
 	}
 
 	setLoadingText("Compiling the snippet...");
 	recompile();
 
-	initPostForm(editor);
+	initPublishForm(editor);
 
 	editor.setOption("extraKeys", {
-		"Ctrl-Enter": () => recompile(true),
+		"Ctrl-Enter": recompile.bind(true),
 	});
+	runButton.addEventListener("click", recompile.bind(true));
 
 	setLoadingText("Done!");
 	setLoadingText(null);
+
+	// TODO: save and load code in the local storage.
+	// Prevent the editor from closing with unsaved changes.
+	window.addEventListener('beforeunload', function (e) {
+		if (!changed) return;
+		e.preventDefault();
+		e.returnValue = '';
+	});
+
+	if (publishButton && publishModal) {
+		publishButton.addEventListener("click", () => {
+			publishModal.classList.add("open");
+			publishModalOpen = true;
+		})
+		window.addEventListener("pointerdown", e => {
+			if (!publishModalOpen) return;
+
+			if (!e.target.closest("#editor-publish-modal")) {
+				publishModal.classList.remove("open");
+				publishModalOpen = false;
+			}
+		})
+	}
 }
 
 function initDisplayWindow(emu, editor) {
@@ -233,8 +266,8 @@ function initDisplayWindow(emu, editor) {
 	return win;
 }
 
-function initPostForm(editor) {
-	const form = document.getElementById("editor-post-form");
+function initPublishForm(editor) {
+	const form = document.getElementById("editor-publish-form");
 	if (!form) return;
 
 	async function onSubmit(e) {

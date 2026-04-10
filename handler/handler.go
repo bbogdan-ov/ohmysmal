@@ -80,6 +80,7 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	snippets := make([]server.Snippet, 0, 20)
 	err := server.RequestSnippets(h.db, &snippets, user.Id, ok)
 	if err != nil {
+		// TODO: show error to the user.
 		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
 		// fallthough
 	}
@@ -93,7 +94,10 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := templ.Handler(view.EditorPage())
+	session := h.DefaultSession(r)
+	user, ok := h.authorizedUser(session)
+
+	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: ok}))
 	v.ServeHTTP(w, r)
 }
 

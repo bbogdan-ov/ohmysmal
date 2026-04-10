@@ -68,7 +68,7 @@ body {
 .text-yellow { color: var(--yellow); }
 
 /* -------------------- */
-/* Home */
+/* Home page */
 /* -------------------- */
 
 .feed {
@@ -88,7 +88,7 @@ body {
 }
 
 /* -------------------- */
-/* Editor */
+/* Editor page */
 /* -------------------- */
 
 .editor-page {
@@ -192,11 +192,36 @@ body {
 	font-family: monospace;
 	font-size: .8rem;
 
-	.icon { filter: invert(1); }
+	user-select: none;
+
+	.icon {
+		translate: 0 2px;
+		margin-inline: -4px;
+	}
 }
 .stats {
 	font-family: monospace;
 	font-size: .8rem;
+}
+
+.publish-modal {
+	padding: 1rem;
+	width: 100%;
+	max-width: 400px;
+
+	position: fixed;
+	margin: 1rem;
+	left: 0;
+	bottom: 1.5rem;
+	z-index: 5;
+
+	background: var(--background);
+	border: 1px solid var(--muted);
+	border-radius: 2px;
+
+	&:not(.open) {
+		display: none;
+	}
 }
 
 .CodeMirror {

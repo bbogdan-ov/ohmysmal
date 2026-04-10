@@ -1,5 +1,6 @@
 import { initCompiler } from "./compiler.js";
-import "./syntax.js";
+import { fetchSnippetSource } from "./snippet.js";
+import { initEditor } from "./editor.js";
 
 const DEFAULT_CODE = `\
 // hello
@@ -76,7 +77,15 @@ async function init() {
 	emu.init();
 
 	// Init the text editor.
-	const editor = initEditor();
+	const editorStats = document.getElementById("editor-stats");
+	const editor = initEditor(DEFAULT_CODE);
+
+	function updateStats() {
+		const { line, ch } = editor.getCursor();
+		editorStats.textContent = `${line+1}:${ch+1}`;
+	}
+	updateStats();
+	editor.on("cursorActivity", updateStats);
 
 	// Init display window.
 	const win = initDisplayWindow(emu, editor);
@@ -121,7 +130,14 @@ async function init() {
 	const params = new URLSearchParams(new URL(window.location.href).search);
 	const snippetId = params.get("snippet");
 	if (snippetId != null) {
-		await fetchSnippet(editor, snippetId);
+		setLoadingText("Loading snippet source code...");
+
+		try {
+			const source = await fetchSnippetSource(snippetId);
+			editor.setValue(source);
+		} catch (err) {
+			editor.setValue(`// ${err}\n// Failed to load the snippet...`);
+		}
 	}
 
 	setLoadingText("Compiling the snippet...");
@@ -135,49 +151,6 @@ async function init() {
 
 	setLoadingText("Done!");
 	setLoadingText(null);
-}
-
-async function fetchSnippet(editor, id) {
-	setLoadingText("Loading the snippet source code...");
-
-	const res = await fetch(`/api/snippet?id=${id}`);
-	const text = await res.text();
-	if (!res.ok) {
-		editor.setValue(`// ${text}\n// Failed to load the snippet...`);
-		return;
-	}
-
-	editor.setValue(text);
-}
-
-function initEditor() {
-	const wrapper = document.getElementById("editor-wrapper");
-	const stats = document.getElementById("editor-stats");
-
-	const editor = CodeMirror(wrapper, {
-		mode: "uxnsmal",
-		lineNumbers: true,
-		indentUnit: 4,
-		tabSize: 4,
-		indentWithTabs: true,
-		smartIndent: true,
-		autofocus: true,
-		showTrailingSpace: true,
-		fixedGutter: false,
-		lineWrapping: true,
-		value: DEFAULT_CODE,
-	});
-
-	function updateStats() {
-		const { line, ch } = editor.getCursor();
-		stats.textContent = `${line+1}:${ch+1}`;
-	}
-
-	editor.on("cursorActivity", updateStats);
-
-	updateStats();
-
-	return editor;
 }
 
 function initDisplayWindow(emu, editor) {
@@ -228,7 +201,7 @@ function initDisplayWindow(emu, editor) {
 	zoomButton.addEventListener("click", () => {
 		const before = win.getBoundingClientRect();
 
-		emu.screen.toggle_zoom();
+		emu.screen.switch_zoom();
 		updateStats();
 
 		// Make so that the top-right corner of the window stays in place.

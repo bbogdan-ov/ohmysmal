@@ -49,7 +49,7 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snippetId, number, flowered, err := h.flowerSnippet(r)
+	snippetId, count, flowered, err := h.flowerSnippet(r)
 	if err != nil {
 		// TODO: when user is not authorized we should show some sort of an
 		// alert that says "hey, you should sign in".
@@ -58,7 +58,7 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the updated number of flowers back.
-	v := templ.Handler(view.SnippetFlowerButton(snippetId, number, flowered))
+	v := templ.Handler(view.SnippetFlowers(snippetId, count, flowered))
 	v.ServeHTTP(w, r)
 }
 

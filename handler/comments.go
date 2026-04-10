@@ -7,6 +7,7 @@ import (
 	"ohmysmal/view"
 	"strings"
 	"unicode/utf8"
+	"time"
 
 	"github.com/a-h/templ"
 )
@@ -15,6 +16,8 @@ func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
 	if !EnsureMethod(w, r, "POST") {
 		return
 	}
+
+	time.Sleep(time.Second)
 
 	author, text, err := h.postComment(r)
 	if err != nil {

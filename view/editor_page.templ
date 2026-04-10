@@ -1,12 +1,5 @@
 package view
 
-import (
-	"fmt"
-
-	"ohmysmal/consts"
-	"ohmysmal/server"
-)
-
 templ EditorPage() {
 	<!DOCTYPE html>
 	<html lang="en">
@@ -50,42 +43,6 @@ templ EditorPage() {
 		<script src="/static/js/editor_page.js" type="module"></script>
 	</body>
 	</html>
-}
-
-templ commentsList(s server.Snippet, user server.User, comments []server.Comment) {
-	<div class="comments">
-		<form
-			class="form"
-			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
-			hx-target="#comments-list"
-			hx-swap="afterbegin"
-		>
-			<label>
-				<span>Comment</span>
-				<textarea
-					name="text"
-					placeholder="..."
-					required
-					maxlength={consts.MAX_COMMENT_TEXT_LEN}
-				></textarea>
-			</label>
-			<button class="button" type="submit">submit as {user.Nickname}</button>
-		</form>
-
-		<hr>
-
-		<div id="comments-list">
-			for _, c := range comments {
-				@Comment(c.AuthorNickname, c.Text)
-			}
-		</div>
-	</div>
-}
-
-templ Comment(author string, text string) {
-	<div class="comment">
-		<b>{author}</b>: <span>{text}</span>
-	</div>
 }
 
 templ uxnScripts() {

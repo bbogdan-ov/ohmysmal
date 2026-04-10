@@ -3,24 +3,8 @@ package view
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"ohmysmal/server"
 )
-
-templ SnippetFlowerButton(id uuid.UUID, n uint, active bool) {
-	<button
-		hx-post={ fmt.Sprintf("/api/flower/%s", id.String()) }
-		hx-swap="outerHTML"
-		if active {
-			class="button active"
-		} else {
-			class="button"
-		}
-	>
-		{n} flowers
-	</button>
-}
 
 templ Ok(msg string) {
 	<p class="message ok">{msg}</p>
@@ -31,8 +15,11 @@ templ Error(msg string) {
 
 templ header(user server.User) {
 	<header class="header">
-		<span>{user.Nickname}</span>
-		<a href="" hx-post="/api/logout" title="Logout">@icon("logout")</a>
+		<a href="/" title="Go home">@icon("home")</a>
+		<div class="row gap-1">
+			<span>{user.Nickname}</span>
+			<span class="link-ish" hx-post="/api/logout" title="Logout">@icon("logout")</span>
+		</div>
 	</header>
 }
 templ footer() {
@@ -52,7 +39,10 @@ templ footer() {
 }
 
 templ icon(name string) {
-	<div class={ fmt.Sprintf("icon icon-%s", name) }></div>
+	@iconWithStyle(name, "")
+}
+templ iconWithStyle(name string, style string) {
+	<div class={ fmt.Sprintf("icon icon-%s", name) } style={style}></div>
 }
 
 templ head(title string) {

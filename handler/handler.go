@@ -106,15 +106,16 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	user, authed := h.authorizedUser(session)
 
 	var snippet server.Snippet
+	var comments []server.Comment
 	ok := true
 
+	// Parse snippet id from the URL.
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
 		// No id, just redirect.
 		Redirect(w, "/")
 		return
 	}
-
 	snippetId, err := uuid.Parse(idStr)
 	if err != nil {
 		// Invalid id, just redirect.
@@ -122,6 +123,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Request the snippet.
 	snippet, err = server.RequestSnippet(r, h.db, snippetId, user.Id, authed)
 	if err == sql.ErrNoRows {
 		ok = false
@@ -130,7 +132,22 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := templ.Handler(view.SnippetPage(server.MaybeSnippet{Snippet: snippet, Ok: ok}))
+	if ok {
+		// Request snippet comments.
+		comments = make([]server.Comment, 0, 10)
+		err = server.RequestSnippetComments(h.db, snippetId, &comments)
+		if err != nil {
+			Error(w, err)
+			return
+		}
+	}
+
+	// Render the page.
+	v := templ.Handler(view.SnippetPage(
+		server.MaybeSnippet{Snippet: snippet, Ok: ok},
+		server.MaybeUser{User: user, Ok: authed},
+		comments,
+	))
 	v.ServeHTTP(w, r)
 }
 

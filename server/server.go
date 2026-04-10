@@ -57,6 +57,11 @@ type Snippet struct {
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
 }
 
+type MaybeUser struct {
+	User
+	Ok bool
+}
+
 type MaybeSnippet struct {
 	Snippet
 	Ok bool
@@ -143,9 +148,10 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 			(flowers.user_id IS NOT NULL) as flowered
 		FROM snippets_with_author
 		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
+		ORDER BY date DESC
 		`, authUserId)
 	} else {
-		rows, err = db.Query("SELECT *, false as flowered FROM snippets_with_author")
+		rows, err = db.Query("SELECT *, false as flowered FROM snippets_with_author ORDER BY date DESC")
 	}
 
 	if err != nil {
@@ -212,6 +218,7 @@ func RequestSnippetComments(db *sql.DB, id uuid.UUID, comments *[]Comment) (err 
 	FROM comments
 	JOIN users ON author_id = users.id
 	WHERE snippet_id = ?
+	ORDER BY date DESC
 	`, id[:])
 
 	if err != nil {

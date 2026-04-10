@@ -83,7 +83,6 @@ function Screen(emu)
 			this.height = height;
 		}
 		this.repaint = 1
-		console.log(`Resize requested: ${width}x${height}`)
 		this.displayctx.canvas.width = width;
 		this.displayctx.canvas.height = height;
 		this.set_zoom(this.zoom)
@@ -233,7 +232,7 @@ function Screen(emu)
 		}
 	}
 
-	this.toggle_zoom = () => {
+	this.switch_zoom = () => {
 		switch (this.zoom) {
 			case 1: this.set_zoom(2); break;
 			case 2: this.set_zoom(3); break;

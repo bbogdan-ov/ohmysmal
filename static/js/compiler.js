@@ -15,12 +15,16 @@ export async function initCompiler(load, problem, note) {
 					load(bytes);
 				},
 				problem: (line, col, ptr, len) => {
-					const msg = decodeString(ptr, len);
-					problem(line, col, msg)
+					if (problem) {
+						const msg = decodeString(ptr, len);
+						problem(line, col, msg)
+					}
 				},
 				note: (line, col, ptr, len) => {
-					const msg = decodeString(ptr, len);
-					note(line, col, msg)
+					if (note) {
+						const msg = decodeString(ptr, len);
+						note(line, col, msg)
+					}
 				}
 			}
 		}

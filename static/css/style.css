@@ -13,6 +13,7 @@
 	--black: #0f0f0f;
 	--white: #f0f0f0;
 	--muted: #888888;
+	--dark: #222222;
 
 	--magenta: #bc87a5;
 	--yellow: #eeb551;
@@ -71,7 +72,6 @@ body {
 /* -------------------- */
 
 .feed {
-	padding-block: 2rem;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 	gap: 1rem;
@@ -247,6 +247,144 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 .cm-comment { color: var(--muted) !important; }
 
 /* -------------------- */
+/* Snippet page */
+/* -------------------- */
+
+.snippet-page-container {
+	gap: 1rem;
+	align-items: flex-start;
+
+	.CodeMirror {
+		height: fit-content;
+		font-size: 1rem;
+	}
+	.CodeMirror-lines { padding: 0 !important; }
+	.CodeMirror-scroll { overflow: hidden !important; }
+	.footer { margin-top: 1rem; }
+}
+
+.snippet-display-wrapper {
+	width: 100%;
+
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 1rem;
+}
+.snippet-display {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	align-self: center;
+	gap: 0.5rem;
+
+	user-select: none;
+}
+
+.snippet-display-controls {
+	color: var(--muted);
+	font-family: monospace;
+	font-size: 0.8rem;
+}
+
+.flower-jar {
+	width: 32px;
+	height: 48px;
+
+	margin-top: 1rem;
+
+	background: url("/static/images/flower-jar.png");
+	background-position: 0 0;
+
+	cursor: pointer;
+	transition: .2s;
+	user-select: none;
+
+	.tip {
+		position: absolute;
+		left: calc(100% + 10px);
+		bottom: calc(100% - 10px);
+		text-wrap: nowrap;
+		pointer-events: none;
+
+		.tip-loading {
+			display: none;
+		}
+
+		&::before {
+			content: "";
+
+			width: 10px;
+			height: 1px;
+
+			position: absolute;
+			right: 100%;
+			bottom: 0;
+			transform-origin: right top;
+			rotate: -45deg;
+
+			background: var(--muted);
+		}
+	}
+
+	&.active {
+		background-position: -32px 0;
+	}
+	&.htmx-request {
+		opacity: 0.5;
+		pointer-events: none;
+
+		.tip-text { display: none; }
+		.tip-loading { display: initial; }
+	}
+}
+.flowers-pile {
+	width: fit-content;
+	padding: 0.75rem;
+	padding-right: calc(0.75rem + 6px);
+
+	display: flex;
+	flex-wrap: wrap;
+
+	background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAAAD+Fb1AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAAd0SU1FB+oEChMbFqK0twIAAAAYSURBVAjXY+hoYGDoaGBgYIBQHQ0MGCIAlMQIQTlXEfYAAAAASUVORK5CYII=);
+
+	> .icon {
+		margin-right: -6px;
+		margin-block: 0;
+	}
+}
+
+.snippet-grid {
+	width: 100%;
+
+	display: grid;
+	grid-template-columns: 3fr 2fr;
+	gap: 2rem;
+}
+
+.snippet-comments {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.comment-form {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.5rem;
+	transition: .3s;
+
+	textarea {
+		height: 160px;
+	}
+
+	&.htmx-request {
+		opacity: 0.5;
+		pointer-events: none;
+	}
+}
+
+/* -------------------- */
 /* Global */
 /* -------------------- */
 
@@ -266,7 +404,7 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: 0.5rem;
 }
 .footer {
@@ -275,6 +413,7 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 
 	display: flex;
 	justify-content: space-between;
+	margin-top: 2rem;
 
 	border-top: 1px dotted var(--muted);
 }
@@ -339,10 +478,9 @@ a {
 
 hr {
 	width: 100%;
-	height: 1px;
+	height: 0;
 	border: none;
-	background: var(--text-color);
-	opacity: .5;
+	border-bottom: 1px dotted var(--muted);
 }
 
 .form {
@@ -415,11 +553,11 @@ textarea {
 
 	font-family: var(--font);
 	font-size: 1rem;
-	border: 1px solid var(--muted);
-	background: white;
+	border: none;
+	background: var(--dark);
 	color: var(--text-color);
-	resize: vertical;
 	border-radius: 2px;
+	resize: vertical;
 	outline: none;
 
 	&:focus {
@@ -462,11 +600,15 @@ button.link-ish {
 	animation: icon infinite step-end 1s;
 
 	&.icon-logout { --icon-index: 0; }
-	&.icon-loading { --icon-index: 1; }
+	&.icon-home   { --icon-index: 1; }
+	&.icon-flower { --icon-index: 2; }
+	&.icon-plane  { --icon-index: 3; }
+
+	background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0;
 }
 @keyframes icon {
-	0%, 100% { background-position: calc(var(--icon-index) * var(--icon-size)) 0; }
-	25% { background-position: calc(var(--icon-index) * var(--icon-size)) calc(var(--icon-size) * -1); }
-	50% { background-position: calc(var(--icon-index) * var(--icon-size)) calc(var(--icon-size) * -2); }
-	75% { background-position: calc(var(--icon-index) * var(--icon-size)) calc(var(--icon-size) * -3); }
+	0%, 100% { background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0; }
+	25% { background-position: calc(var(--icon-index) * -1 * var(--icon-size)) calc(var(--icon-size) * -1); }
+	50% { background-position: calc(var(--icon-index) * -1 * var(--icon-size)) calc(var(--icon-size) * -2); }
+	75% { background-position: calc(var(--icon-index) * -1 * var(--icon-size)) calc(var(--icon-size) * -3); }
 }

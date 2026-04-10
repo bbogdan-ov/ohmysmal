@@ -2,12 +2,20 @@ package view
 
 import (
 	"fmt"
+	"math/rand"
+
+	"github.com/google/uuid"
 
 	"ohmysmal/server"
+	"ohmysmal/consts"
 )
 
-templ SnippetPage(snippet server.MaybeSnippet) {
-	if !snippet.Ok {
+templ SnippetPage(
+	s server.MaybeSnippet,
+	user server.MaybeUser,
+	comments []server.Comment,
+) {
+	if !s.Ok {
 		@page("snippet") {
 			<div class="container">
 				<h1>Failed to load snippet :(</h1>
@@ -15,21 +23,152 @@ templ SnippetPage(snippet server.MaybeSnippet) {
 			</div>
 		}
 	} else {
-		@snippetFoundPage(snippet.Snippet)
+		@snippetFoundPage(s.Snippet, user, comments)
 	}
 }
 
-templ snippetFoundPage(snippet server.Snippet) {
+templ snippetFoundPage(
+	s server.Snippet,
+	user server.MaybeUser,
+	comments []server.Comment,
+) {
 	// TODO: show a title and an author of the snippet.
-	@page("snippet") {
-		<div class="container">
-			<canvas id="display" class="uxn-canvas"></canvas>
-			<a href={ fmt.Sprintf("/editor?snippet=%s", snippet.Id) }>open in the editor</a>
-			<span>TODO:</span>
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
+		<script src="/static/lib/codemirror/codemirror.js"></script>
+		<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
+
+		@head("snippet")
+	</head>
+	<body>
+		<div class="container snippet-page-container" id="container">
+			if user.Ok {
+				@header(user.User)
+			}
+
+			<!-- UXN display -->
+			<div class="snippet-display-wrapper">
+				<div class="snippet-display">
+					<canvas id="display" class="uxn-canvas"></canvas>
+				</div>
+			</div>
+
+			<div class="snippet-display-controls flex gap-2">
+				<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
+				<span id="display-zoom-button" class="link-ish">x1</span>
+			</div>
+
+			<hr />
+
+			<!-- Snippet info -->
+			<div class="flex-column">
+				<h2>{s.Title}</h2>
+				<span>{"@"}{s.AuthorNickname}</span>
+			</div>
+
+			<div id="editor-wrapper" style="width: 100%;">/**/</div>
+
+			<hr />
+
+			<div class="snippet-grid">
+				@snippetComments(s, user, comments)
+				@SnippetFlowers(s.Id, s.Flowers, s.AuthUserFlowered)
+			</div>
+
+			@footer()
 		</div>
 
 		@uxnScripts()
 
 		<script src="/static/js/snippet_page.js" type="module"></script>
-	}
+	</body>
+	</html>
+}
+
+templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
+	<div id="snippet-flowers-wrapper" class="flex-column items-start gap-2">
+		<div
+			if active {
+				class="flower-jar active"
+				title="Take the flower back"
+			} else {
+				class="flower-jar"
+				title="Give a flower"
+			}
+			hx-post={ fmt.Sprintf("/api/flower/%s", id) }
+			hx-target="#snippet-flowers-wrapper"
+			hx-swap="outerHTML"
+		>
+			<div class="tip muted">
+				if active {
+					<i class="tip-text">You gave a flower!</i>
+					<i class="tip-loading">Taking the flower back...</i>
+				} else {
+					<i class="tip-text">Give a flower</i>
+					<i class="tip-loading">The flower is flying away...</i>
+				}
+			</div>
+		</div>
+
+		<div class="flex-column">
+			if count == 1 {
+				<span class="muted">1 person gave a flower</span>
+			} else {
+				<span class="muted">{count} people gave a flower</span>
+			}
+			<!-- TODO: add and remove flowers on the client, it is not good to
+			|    render all flowers on the server everytime the number of flowers changes. -->
+			<div class="flowers-pile" title="Give a flower">
+				if count == 0 {
+					<i>The pile is empty...</i>
+				}
+
+				for i := range count {
+					{{ n := rand.Int() % 6 - 3 }}
+					{{ style := fmt.Sprintf("animation-delay: %dms; translate: %dpx %dpx;", 100 * i, n, n) }}
+					@iconWithStyle("flower", style)
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ snippetComments(
+	s server.Snippet,
+	user server.MaybeUser,
+	comments []server.Comment,
+) {
+	<div class="snippet-comments">
+		<form
+			class="comment-form"
+			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
+			hx-target="#comments-list"
+			hx-swap="afterbegin"
+		>
+			<textarea
+				name="text"
+				placeholder="Your thoughts..."
+				required
+				maxlength={consts.MAX_COMMENT_TEXT_LEN}
+			></textarea>
+			<button type="submit" class="link-ish">
+				send
+				@icon("plane")
+			</button>
+		</form>
+
+		<div id="comments-list">
+			for _, c := range comments {
+				@Comment(c.AuthorNickname, c.Text)
+			}
+		</div>
+	</div>
+}
+
+templ Comment(author string, text string) {
+	<div class="comment">
+		<b>{"@"}{author}</b>: <span>{text}</span>
+	</div>
 }

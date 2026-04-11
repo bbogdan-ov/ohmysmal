@@ -37,9 +37,9 @@ templ snippet(s server.Snippet) {
 	<article class="snippet">
 		<p>
 			<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
-			<span class="muted">by {s.AuthorNickname}</span>
+			<span class="muted">{"@"}{s.AuthorNickname}</span>
 		</p>
 
-		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>
+		<span class="stats muted">{s.Flowers} flowers : {s.Comments} comments : {s.Date}</span>
 	</article>
 }

@@ -54,6 +54,8 @@ body {
 .items-center { align-items: flex-center; }
 .items-end { align-items: flex-end; }
 
+.justify-between { justify-content: space-between; }
+
 .gap-1 { gap: 0.5rem; }
 .gap-2 { gap: 1rem; }
 .gap-3 { gap: 1.5rem; }

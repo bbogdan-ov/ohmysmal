@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"log"
 	"net"
 	"net/http"
@@ -50,10 +52,35 @@ func main() {
 	static := http.Dir("static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(static)))
 
+	port := envOr("OHMYSMAL_PORT", "8080")
+	cert := envOr("OHMYSMAL_CERT", "")
+	key := envOr("OHMYSMAL_KEY", "")
+
+	log.Printf("OHMYSMAL_PORT = %q", port)
+	log.Printf("OHMYSMAL_CERT = %q", cert)
+	log.Printf("OHMYSMAL_KEY = %q", key)
+
+	addr := fmt.Sprintf(":%s", port)
+
 	// Starting the server.
-	log.Printf("Listening on :8080")
-	err := http.ListenAndServe(":8080", nil)
+	log.Printf("Listening on %s", addr)
+
+	var err error
+	if cert != "" || key != "" {
+		err = http.ListenAndServeTLS(addr, cert, key, nil)
+	} else {
+		err = http.ListenAndServe(addr, nil)
+	}
+
 	if err != nil {
 		log.Fatalf("Failed to run the server: %s", err)
 	}
+}
+
+func envOr(name string, default_ string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		value = default_
+	}
+	return value
 }

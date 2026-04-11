@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,9 +11,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-// TODO: move the password into an .env file.
-const SOURCE_NAME = "root:root@/ohmysmal?parseTime=true&loc=Local"
 
 var (
 	ErrUserNotFound = errors.New("user not found")
@@ -79,8 +77,9 @@ type Comment struct {
 	AuthorNickname string // Joined.
 }
 
-func ConnectDatabase() *sql.DB {
-	db, err := sql.Open("mysql", SOURCE_NAME)
+func ConnectDatabase(username, password string) *sql.DB {
+	source := fmt.Sprintf("%s:%s@/ohmysmal?parseTime=true&loc=Local", username, password)
+	db, err := sql.Open("mysql", source)
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %s", err)
 	}

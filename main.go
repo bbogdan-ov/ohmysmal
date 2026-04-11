@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -18,9 +17,17 @@ import (
 )
 
 func main() {
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	username := envOr("OHMYSMAL_USERNAME", "root")
+	password := envOr("OHMYSMAL_PASSWORD", "root")
+	port := envOr("OHMYSMAL_PORT", "8080")
+	cert := envOr("OHMYSMAL_CERT", "")
+	key := envOr("OHMYSMAL_KEY", "")
+
+	log.Printf("OHMYSMAL_USERNAME = (%t)", username != "")
+	log.Printf("OHMYSMAL_PASSWORD = (%t)", password != "")
+	log.Printf("OHMYSMAL_PORT = %q", port)
+	log.Printf("OHMYSMAL_CERT = %q", cert)
+	log.Printf("OHMYSMAL_KEY = %q", key)
 
 	net.DefaultResolver = &net.Resolver{PreferGo: false}
 
@@ -31,7 +38,7 @@ func main() {
 	store := sessions.NewCookieStore([]byte("secret")) // TODO: pass a secret key through env vars.
 
 	// Setup database.
-	db := server.ConnectDatabase()
+	db := server.ConnectDatabase(username, password)
 	defer db.Close()
 
 	h := handler.New(db, cache, store)
@@ -51,14 +58,6 @@ func main() {
 
 	static := http.Dir("static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(static)))
-
-	port := envOr("OHMYSMAL_PORT", "8080")
-	cert := envOr("OHMYSMAL_CERT", "")
-	key := envOr("OHMYSMAL_KEY", "")
-
-	log.Printf("OHMYSMAL_PORT = %q", port)
-	log.Printf("OHMYSMAL_CERT = %q", cert)
-	log.Printf("OHMYSMAL_KEY = %q", key)
 
 	addr := fmt.Sprintf(":%s", port)
 

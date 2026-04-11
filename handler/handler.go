@@ -184,7 +184,7 @@ func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		Redirect(w, fmt.Sprintf("/snippet?id=%s", id))
+		w.Write([]byte(fmt.Sprintf("%s", id)))
 	case "GET":
 		err := h.snippetSource(w, r)
 		if err != nil {

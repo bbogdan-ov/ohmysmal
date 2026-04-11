@@ -63,7 +63,6 @@ async function init() {
 	const contWidth = container.getBoundingClientRect().width;
 	const targetSize = Math.min(contWidth, innerWidth, innerHeight - 100);
 
-	console.log(targetSize, contWidth, display.width)
 	const zoom = Math.floor(targetSize / display.width);
 	emu.screen.set_zoom(Math.max(zoom, 1));
 	updateZoomButton();

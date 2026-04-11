@@ -280,16 +280,18 @@ function initPublishForm(editor) {
 		const data = new FormData(form);
 		data.append("file", blob, "source.smal");
 
-		try {
-			const res = await fetch("/api/snippet", {
-				method: "POST",
-				body: data,
-			});
-			window.location.replace(res.headers.get("HX-Redirect"));
-		} catch (e) {
+		const res = await fetch("/api/snippet", {
+			method: "POST",
+			body: data,
+		});
+		const text = await res.text();
+		if (!res.ok) {
+			// TODO: show a proper message to the user.
 			console.error("Failed to post the snippet.");
-			console.error(e);
+			console.error(text);
+			return;
 		}
+		window.location.replace(`/snippet?id=${text}`);
 	}
 
 	form.addEventListener("submit", onSubmit);

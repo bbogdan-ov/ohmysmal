@@ -103,7 +103,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 
 	if ok {
 		// Request snippet comments.
-		comments = make([]server.Comment, 0, 10)
+		comments = make([]server.Comment, 0)
 		err = server.RequestSnippetComments(h.db, snippetId, &comments)
 		if err != nil {
 			ErrorPage(w, r, err)
@@ -221,13 +221,39 @@ func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	author, text, err := h.postComment(r)
+	// Parse path params.
+	snippetId, err := UUIDPathValue(r, "snippet_id")
 	if err != nil {
 		Error(w, err)
 		return
 	}
 
-	v := templ.Handler(view.Comment(author, text))
+	session := h.DefaultSession(r)
+	user, authed := h.authorizedUser(session)
+	if !authed {
+		Error(w, ErrUserNotAuth)
+		return
+	}
+
+	err = h.postComment(r, user, snippetId)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	// Request snippet comments.
+	comments := make([]server.Comment, 0)
+	err = server.RequestSnippetComments(h.db, snippetId, &comments)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	v := templ.Handler(view.SnippetComments(
+		snippetId,
+		server.MaybeUser{User: user, Ok: true},
+		comments,
+	))
 	v.ServeHTTP(w, r)
 }
 

@@ -74,7 +74,7 @@ templ snippetFoundPage(
 				<hr />
 
 				<div class="snippet-grid">
-					@snippetComments(s, user, comments)
+					@SnippetComments(s.Id, user, comments)
 					@SnippetFlowers(s.Id, s.Flowers, s.AuthUserFlowered, user.Ok)
 				</div>
 
@@ -148,12 +148,12 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
 	</div>
 }
 
-templ snippetComments(
-	s server.Snippet,
+templ SnippetComments(
+	snippetId uuid.UUID,
 	user server.MaybeUser,
 	comments []server.Comment,
 ) {
-	<div class="snippet-comments">
+	<div id="snippet-comments" class="snippet-comments">
 		if len(comments) == 1 {
 			<span class="text-small muted">1 comment</span>
 		} else {
@@ -163,9 +163,9 @@ templ snippetComments(
 		if user.Ok {
 			<form
 				class="comment-form"
-				hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
-				hx-target="#comments-list"
-				hx-swap="afterbegin"
+				hx-post={ fmt.Sprintf("/api/comment/%s", snippetId) }
+				hx-target="#snippet-comments"
+				hx-swap="outerHTML"
 				hx-on::after-request="if(event.detail.successful) this.reset()"
 			>
 				<div class="comment-textarea">
@@ -188,16 +188,23 @@ templ snippetComments(
 			<i class="muted">~ log in to leave a comment ~</i>
 		}
 
-		<div id="comments-list">
+		<div class="comments-list">
 			for _, c := range comments {
-				@Comment(c.AuthorNickname, c.Text)
+				@Comment(c)
 			}
 		</div>
 	</div>
 }
 
-templ Comment(author string, text string) {
+templ Comment(c server.Comment) {
 	<div class="comment">
-		<b>{"@"}{author}</b>: <span>{text}</span>
+		@icon("comment")
+		<div class="comment-content">
+			<span class="muted">
+				{"@"}{c.AuthorNickname} &#160;·&#160;&#160;
+				@TimeAgo(c.Date, "")
+			</span>
+			<p>{c.Text}</p>
+		</div>
 	</div>
 }

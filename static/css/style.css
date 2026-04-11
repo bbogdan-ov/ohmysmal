@@ -411,6 +411,22 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
+
+	.comments-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+	.comment {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+
+		.comment-content {
+			display: flex;
+			flex-direction: column;
+		}
+	}
 }
 
 .comment-form {
@@ -764,10 +780,12 @@ button.link-ish {
 
 	animation: icon infinite step-end 1s;
 
-	&.icon-logout { --icon-index: 0; }
-	&.icon-home   { --icon-index: 1; }
-	&.icon-flower { --icon-index: 2; }
-	&.icon-plane  { --icon-index: 3; }
+	&.icon-logout  { --icon-index: 0; }
+	&.icon-home    { --icon-index: 1; }
+	&.icon-flower  { --icon-index: 2; }
+	&.icon-plane   { --icon-index: 3; }
+	&.icon-eye     { --icon-index: 4; }
+	&.icon-comment { --icon-index: 5; }
 
 	background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0;
 }

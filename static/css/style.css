@@ -66,6 +66,10 @@ body {
 .text-center { text-align: center; }
 .muted { color: var(--muted); }
 .text-yellow { color: var(--yellow); }
+.text-small {
+	font-size: 0.8rem;
+	font-family: monospace;
+}
 
 /* -------------------- */
 /* Home page */
@@ -304,12 +308,6 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	gap: 0.5rem;
 
 	user-select: none;
-}
-
-.snippet-display-controls {
-	color: var(--muted);
-	font-family: monospace;
-	font-size: 0.8rem;
 }
 
 .flower-jar {

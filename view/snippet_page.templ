@@ -55,7 +55,7 @@ templ snippetFoundPage(
 				</div>
 			</div>
 
-			<div class="snippet-display-controls flex gap-2">
+			<div class="muted text-small flex gap-2">
 				<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
 				<span id="display-zoom-button" class="link-ish">x1</span>
 			</div>
@@ -89,6 +89,12 @@ templ snippetFoundPage(
 
 templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
 	<div id="snippet-flowers-wrapper" class="flex-column items-start gap-2">
+		if count == 1 {
+			<span class="text-small muted">1 person gave a flower</span>
+		} else {
+			<span class="text-small muted">{count} people gave a flower</span>
+		}
+
 		<div
 			if active {
 				class="flower-jar active"
@@ -113,11 +119,6 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
 		</div>
 
 		<div class="flex-column">
-			if count == 1 {
-				<span class="muted">1 person gave a flower</span>
-			} else {
-				<span class="muted">{count} people gave a flower</span>
-			}
 			<!-- TODO: add and remove flowers on the client, it is not good to
 			|    render all flowers on the server everytime the number of flowers changes. -->
 			<div class="flowers-pile" title="Give a flower">
@@ -141,6 +142,12 @@ templ snippetComments(
 	comments []server.Comment,
 ) {
 	<div class="snippet-comments">
+		if len(comments) == 1 {
+			<span class="text-small muted">1 comment</span>
+		} else {
+			<span class="text-small muted">{len(comments)} comments</span>
+		}
+
 		<form
 			class="comment-form"
 			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }

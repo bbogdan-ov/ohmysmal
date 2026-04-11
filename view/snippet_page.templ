@@ -86,7 +86,10 @@ templ snippetFoundPage(
 }
 
 templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
-	<div id="snippet-flowers-wrapper" class="flex-column items-start gap-2">
+	<div
+		id="snippet-flowers-wrapper"
+		class="snippet-flowers flex-column items-start gap-2"
+	>
 		if count == 1 {
 			<span class="text-small muted">1 person gave a flower</span>
 		} else {

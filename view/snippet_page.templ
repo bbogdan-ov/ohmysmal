@@ -16,11 +16,14 @@ templ SnippetPage(
 	comments []server.Comment,
 ) {
 	if !s.Ok {
-		@page("snippet") {
-			<div class="container">
-				<h1>Failed to load snippet :(</h1>
-				<a href="/">go home</a>
-			</div>
+		@page() {
+			@pageHead("snippet")
+			@pageBody() {
+				<div class="container">
+					<h1>Failed to load snippet :(</h1>
+					<a href="/">go home</a>
+				</div>
+			}
 		}
 	} else {
 		@snippetFoundPage(s.Snippet, user, comments)
@@ -32,62 +35,57 @@ templ snippetFoundPage(
 	user server.MaybeUser,
 	comments []server.Comment,
 ) {
-	// TODO: show a title and an author of the snippet.
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
-		<script src="/static/lib/codemirror/codemirror.js"></script>
-		<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
+	@page() {
+		// TODO: show a title and an author of the snippet.
+		@pageHead("snippet") {
+			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
+			<script src="/static/lib/codemirror/codemirror.js"></script>
+			<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
+		}
+		@pageBody() {
+			<div class="container snippet-page-container" id="container">
+				@header(user)
 
-		@head("snippet")
-	</head>
-	<body>
-		<div class="container snippet-page-container" id="container">
-			if user.Ok {
-				@header(user.User)
-			}
-
-			<!-- UXN display -->
-			<div class="snippet-display-wrapper">
-				<div class="snippet-display">
-					<canvas id="display" class="uxn-canvas"></canvas>
+				<!-- UXN display -->
+				<div class="snippet-display-wrapper">
+					<div class="snippet-display">
+						<canvas id="display" class="uxn-canvas"></canvas>
+					</div>
 				</div>
+
+				<div class="muted text-small flex gap-2">
+					<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
+					<span id="display-zoom-button" class="link-ish">x1</span>
+				</div>
+
+				<hr />
+
+				<!-- Snippet info -->
+				<div class="flex-column">
+					<h2>{s.Title}</h2>
+					<span>{"@"}{s.AuthorNickname}</span>
+				</div>
+
+				<div id="editor-wrapper" style="width: 100%;">/**/</div>
+
+				<hr />
+
+				<div class="snippet-grid">
+					@snippetComments(s, user, comments)
+					@SnippetFlowers(s.Id, s.Flowers, s.AuthUserFlowered, user.Ok)
+				</div>
+
+				@footer()
 			</div>
 
-			<div class="muted text-small flex gap-2">
-				<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
-				<span id="display-zoom-button" class="link-ish">x1</span>
-			</div>
+			@uxnScripts()
 
-			<hr />
-
-			<!-- Snippet info -->
-			<div class="flex-column">
-				<h2>{s.Title}</h2>
-				<span>{"@"}{s.AuthorNickname}</span>
-			</div>
-
-			<div id="editor-wrapper" style="width: 100%;">/**/</div>
-
-			<hr />
-
-			<div class="snippet-grid">
-				@snippetComments(s, user, comments)
-				@SnippetFlowers(s.Id, s.Flowers, s.AuthUserFlowered)
-			</div>
-
-			@footer()
-		</div>
-
-		@uxnScripts()
-
-		<script src="/static/js/snippet_page.js" type="module"></script>
-	</body>
-	</html>
+			<script src="/static/js/snippet_page.js" type="module"></script>
+		}
+	}
 }
 
-templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
+templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
 	<div id="snippet-flowers-wrapper" class="flex-column items-start gap-2">
 		if count == 1 {
 			<span class="text-small muted">1 person gave a flower</span>
@@ -96,19 +94,27 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
 		}
 
 		<div
-			if active {
+			if !authed {
+				class="flower-jar"
+				title="Log in to give a flower"
+				onclick="openAuthForms()"
+			} else if active {
 				class="flower-jar active"
 				title="Take the flower back"
 			} else {
 				class="flower-jar"
 				title="Give a flower"
 			}
-			hx-post={ fmt.Sprintf("/api/flower/%s", id) }
-			hx-target="#snippet-flowers-wrapper"
-			hx-swap="outerHTML"
+			if authed {
+				hx-post={ fmt.Sprintf("/api/flower/%s", id) }
+				hx-target="#snippet-flowers-wrapper"
+				hx-swap="outerHTML"
+			}
 		>
 			<div class="tip muted">
-				if active {
+				if !authed {
+					<i class="tip-text">Log in to give a flower!</i>
+				} else if active {
 					<i class="tip-text">You gave a flower!</i>
 					<i class="tip-loading">Taking the flower back...</i>
 				} else {
@@ -121,7 +127,7 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool) {
 		<div class="flex-column">
 			<!-- TODO: add and remove flowers on the client, it is not good to
 			|    render all flowers on the server everytime the number of flowers changes. -->
-			<div class="flowers-pile" title="Give a flower">
+			<div class="flowers-pile">
 				if count == 0 {
 					<i>The pile is empty...</i>
 				}
@@ -150,6 +156,9 @@ templ snippetComments(
 
 		<form
 			class="comment-form"
+			if !user.Ok {
+				inert
+			}
 			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
 			hx-target="#comments-list"
 			hx-swap="afterbegin"

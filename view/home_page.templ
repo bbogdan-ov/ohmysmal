@@ -4,32 +4,25 @@ import (
 	"fmt"
 
 	"ohmysmal/server"
-	"ohmysmal/consts"
 )
 
-templ HomePage(user server.User, exists bool, snippets []server.Snippet) {
-	@page("home") {
-		<div class="container">
-			if exists {
+templ HomePage(user server.MaybeUser, snippets []server.Snippet) {
+	@page() {
+		@pageHead("home")
+		@pageBody() {
+			<div class="container">
 				@header(user)
-			}
 
-			<div class="welcome-logo"></div>
-			<i class="text-center text-yellow">— Feel UXN inside yourself. —</i>
+				<div class="welcome-logo"></div>
+				<i class="text-center text-yellow">— Feel UXN inside yourself. —</i>
 
-			if !exists {
-				<div class="flex gap-2" style="margin-bottom: 2rem">
-					@loginForm()
-					@registerForm()
-				</div>
-			}
+				<a href="/editor">open editor</a>
 
-			<a href="/editor">open editor</a>
+				@feed(snippets)
 
-			@feed(snippets)
-
-			@footer()
-		</div>
+				@footer()
+			</div>
+		}
 	}
 }
 
@@ -49,65 +42,4 @@ templ snippet(s server.Snippet) {
 
 		<span class="stats">{s.Flowers} flowers : {s.Comments} comments</span>
 	</article>
-}
-
-templ loginForm() {
-	<form
-		class="form"
-		hx-post="/api/login"
-		hx-swap="innerHTML"
-		hx-target="#login-result"
-		hx-target-error="#login-result"
-	>
-		<span id="login-result"></span>
-		<input
-			type="text"
-			name="nickname"
-			placeholder="Nickname"
-			required
-			maxlength={consts.MAX_NICKNAME_LEN}
-		/>
-		<input
-			type="password"
-			name="password"
-			placeholder="Password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<button class="button" type="submit">login</button>
-	</form>
-}
-
-templ registerForm() {
-	<form
-		class="form"
-		hx-post="/api/register"
-		hx-swap="innerHTML"
-		hx-target="#register-result"
-		hx-target-error="#register-result"
-	>
-		<span id="register-result"></span>
-		<input
-			type="text"
-			name="nickname"
-			placeholder="Nickname"
-			required
-			maxlength={consts.MAX_NICKNAME_LEN}
-		/>
-		<input
-			type="password"
-			name="password"
-			placeholder="Password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<input
-			type="password"
-			name="password-confirm"
-			placeholder="Repeat the password"
-			required
-			maxlength={consts.MAX_PASSWORD_LEN}
-		/>
-		<button class="button" type="submit">register</button>
-	</form>
 }

@@ -6,71 +6,66 @@ import (
 )
 
 templ EditorPage(user server.MaybeUser) {
-	<!DOCTYPE html>
-	<html lang="en">
-	<head>
-		<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
-		<script src="/static/lib/codemirror/codemirror.js"></script>
-		<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
-
-		@head("editor")
-	</head>
-	<body>
-		<div class="editor-page">
-			<div class="editor-container">
-				<div id="editor-wrapper">/* the text editor goes here */</div>
-
-				<div class="statusbar">
-					<div class="row gap-2">
-						<a href="/" title="Go home">@icon("home")</a>
-						<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
-						if user.Ok {
-							<span id="publish-button" class="link-ish">publish</span>
-						}
-					</div>
-					<span id="editor-stats" class="muted">/**/</span>
-				</div>
-			</div>
-
-			<div class="editor-sidebar">
-				<div id="editor-problems">
-				</div>
-			</div>
-
-			<div id="display-window" tabindex="1">
-				<div class="display-stats stats">
-					<span id="display-zoom-button" class="link-ish">x1</span>
-				</div>
-				<canvas id="display" class="uxn-canvas"></canvas>
-			</div>
-		</div>
-
-		if user.Ok {
-			<div class="publish-modal" id="editor-publish-modal">
-				<form
-					id="editor-publish-form"
-					class="form"
-				>
-					<textarea
-						name="title"
-						placeholder="My great snippet..."
-						required
-						maxlength={consts.MAX_SNIPPET_TITLE_LEN}
-					></textarea>
-					<button class="button" type="submit">publish as {user.Nickname}!</button>
-				</form>
-			</div>
+	@page() {
+		@pageHead("editor") {
+			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
+			<script src="/static/lib/codemirror/codemirror.js"></script>
+			<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
 		}
+		@pageBody() {
+			<div class="editor-page">
+				<div class="editor-container">
+					<div id="editor-wrapper">/* the text editor goes here */</div>
 
-		<div id="loader">
-			<span id="loader-text">/**/</span>
-		</div>
+					<div class="statusbar">
+						<div class="row gap-2">
+							<a href="/" title="Go home">@icon("home")</a>
+							<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
+							if user.Ok {
+								<span id="publish-button" class="link-ish">publish</span>
+							}
+						</div>
+						<span id="editor-stats" class="muted">/**/</span>
+					</div>
+				</div>
 
-		@uxnScripts()
+				<div class="editor-sidebar">
+					<div id="editor-problems">
+					</div>
+				</div>
 
-		<script src="/static/js/editor_page.js" type="module"></script>
-	</body>
-	</html>
+				<div id="display-window" tabindex="1">
+					<div class="display-stats stats">
+						<span id="display-zoom-button" class="link-ish">x1</span>
+					</div>
+					<canvas id="display" class="uxn-canvas"></canvas>
+				</div>
+			</div>
+
+			if user.Ok {
+				<div class="publish-modal" id="editor-publish-modal">
+					<form
+						id="editor-publish-form"
+						class="form"
+					>
+						<textarea
+							name="title"
+							placeholder="My great snippet..."
+							required
+							maxlength={consts.MAX_SNIPPET_TITLE_LEN}
+						></textarea>
+						<button class="button" type="submit">publish as {user.Nickname}!</button>
+					</form>
+				</div>
+			}
+
+			<div id="loader">
+				<span id="loader-text">/**/</span>
+			</div>
+
+			@uxnScripts()
+		}
+	}
 }
 
 templ uxnScripts() {

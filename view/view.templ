@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"ohmysmal/server"
+	"ohmysmal/consts"
 )
 
 templ Ok(msg string) {
@@ -13,14 +14,35 @@ templ Error(msg string) {
 	<p class="message error">{msg}</p>
 }
 
-templ header(user server.User) {
+templ ErrorPopup() {
+	<div id="error-popup" class="error-popup">
+		<div class="container" id="error-popup-text">/**/</div>
+	</div>
+}
+
+templ header(user server.MaybeUser) {
 	<header class="header">
 		<a href="/" title="Go home">@icon("home")</a>
-		<div class="row gap-1">
-			<span>{user.Nickname}</span>
-			<span class="link-ish" hx-post="/api/logout" title="Logout">@icon("logout")</span>
-		</div>
+		if user.Ok {
+			<div class="row gap-1">
+				<span>{"@"}{user.User.Nickname}</span>
+				<span class="link-ish" hx-post="/api/logout" title="Logout">@icon("logout")</span>
+			</div>
+		} else {
+			<span class="link-ish" onclick="openAuthForms(true)">login</span>
+		}
 	</header>
+
+	if !user.Ok {
+		<div
+			id="header-auth-forms"
+			class="auth-forms hidden"
+			style="margin-bottom: 2rem"
+		>
+			@loginForm()
+			@registerForm()
+		</div>
+	}
 }
 templ footer() {
 	<footer class="footer">
@@ -38,6 +60,66 @@ templ footer() {
 	</footer>
 }
 
+templ loginForm() {
+	<form
+		class="form"
+		hx-post="/api/login"
+		hx-swap="innerHTML"
+		hx-target="#login-result"
+		hx-target-error="#login-result"
+	>
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<span class="form-result" id="login-result"></span>
+		<button class="button" type="submit">login</button>
+	</form>
+}
+templ registerForm() {
+	<form
+		class="form"
+		hx-post="/api/register"
+		hx-swap="innerHTML"
+		hx-target="#register-result"
+		hx-target-error="#register-result"
+	>
+		<input
+			type="text"
+			name="nickname"
+			placeholder="Nickname"
+			required
+			maxlength={consts.MAX_NICKNAME_LEN}
+		/>
+		<input
+			type="password"
+			name="password"
+			placeholder="Password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<input
+			type="password"
+			name="password-confirm"
+			placeholder="Repeat the password"
+			required
+			maxlength={consts.MAX_PASSWORD_LEN}
+		/>
+		<span class="form-result" id="register-result"></span>
+		<button class="button" type="submit">register</button>
+	</form>
+}
+
 templ icon(name string) {
 	@iconWithStyle(name, "")
 }
@@ -45,27 +127,35 @@ templ iconWithStyle(name string, style string) {
 	<div class={ fmt.Sprintf("icon icon-%s", name) } style={style}></div>
 }
 
-templ head(title string) {
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-	<meta name="description" content="become UXN, feel UXN, love UXN">
-
-	<link rel="stylesheet" href="/static/css/style.css">
-
-	<meta name="htmx-config" content='{"historyEnabled": false}'>
-	<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/htmx-ext-response-targets@2.0.4"></script>
-
-	<title>oh my smal - {title}</title>
-}
-templ page(title string) {
-	<!DOCTYPE html>
-	<html lang="en">
+templ pageHead(title string) {
 	<head>
-		@head(title)
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<meta name="description" content="become UXN, feel UXN, love UXN">
+
+		{children...}
+
+		<link rel="stylesheet" href="/static/css/style.css">
+
+		<meta name="htmx-config" content='{"historyEnabled": false}'>
+		<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/htmx-ext-response-targets@2.0.4"></script>
+
+		<title>oh my smal - {title}</title>
 	</head>
+}
+templ pageBody() {
 	<body hx-ext="response-targets">
 		{children...}
+
+		@ErrorPopup()
+
+		<script src="/static/js/main.js"></script>
 	</body>
+}
+templ page() {
+	<!DOCTYPE html>
+	<html>
+		{children...}
 	</html>
 }

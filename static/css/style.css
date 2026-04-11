@@ -71,6 +71,10 @@ body {
 	font-family: monospace;
 }
 
+.hidden {
+	display: none !important;
+}
+
 /* -------------------- */
 /* Home page */
 /* -------------------- */
@@ -406,6 +410,22 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 		opacity: 0.5;
 		pointer-events: none;
 	}
+
+	&[inert] {
+		pointer-events: none;
+
+		&::after {
+			content: "Log in before commenting!";
+
+			position: absolute;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			inset: 0;
+
+			background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAAAD+Fb1AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAAd0SU1FB+oECw8rGUDNoREAAAAdSURBVAjXY+T/z8DI8J+BkYGBgf8/AwP/f0YMEQCSOghZn+Q0fAAAAABJRU5ErkJggg==);
+		}
+	}
 }
 
 /* -------------------- */
@@ -441,6 +461,43 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	margin-top: auto;
 
 	border-top: 1px dotted var(--muted);
+}
+
+.auth-forms {
+	padding: 1rem;
+	width: 100%;
+
+	display: flex;
+	gap: 1rem;
+	margin-top: 1rem;
+
+	border: 1px solid var(--muted);
+	border-radius: 2px;
+}
+
+.error-popup {
+	width: 100%;
+
+	position: fixed;
+	left: 0;
+	top: 0;
+
+	background: var(--red);
+	color: var(--black);
+	translate: 0 -100%;
+
+	pointer-events: none;
+	transition: .2s;
+
+	.container {
+		min-height: unset;
+		padding-block: 0.5em;
+	}
+
+	&.active {
+		pointer-events: all;
+		translate: 0 0;
+	}
 }
 
 #loader {
@@ -523,6 +580,9 @@ hr {
 form.htmx-request button[type=submit] {
 	opacity: .5;
 	pointer-events: none;
+}
+.form-result {
+	color: var(--red);
 }
 input {
 	width: 100%;

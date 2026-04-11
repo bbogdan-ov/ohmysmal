@@ -130,6 +130,5 @@ func ErrorPage(w http.ResponseWriter, r *http.Request, err error) {
 // doesn't know how to work with normal "Location" header.
 func Redirect(w http.ResponseWriter, location string) {
 	w.Header().Add("HX-Redirect", location)
-	w.Header().Add("Location", location)
 	w.WriteHeader(http.StatusMovedPermanently)
 }

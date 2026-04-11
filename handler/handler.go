@@ -50,7 +50,7 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := templ.Handler(view.HomePage(user, ok, snippets))
+	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: ok}, snippets))
 	v.ServeHTTP(w, r)
 }
 
@@ -203,14 +203,12 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 
 	snippetId, count, flowered, err := h.flowerSnippet(r)
 	if err != nil {
-		// TODO: when user is not authorized we should show some sort of an
-		// alert that says "hey, you should sign in".
 		Error(w, err)
 		return
 	}
 
 	// Send the updated number of flowers back.
-	v := templ.Handler(view.SnippetFlowers(snippetId, count, flowered))
+	v := templ.Handler(view.SnippetFlowers(snippetId, count, flowered, true))
 	v.ServeHTTP(w, r)
 }
 

@@ -2,6 +2,7 @@ package view
 
 import (
 	"fmt"
+	"time"
 
 	"ohmysmal/server"
 	"ohmysmal/consts"
@@ -18,6 +19,12 @@ templ ErrorPopup() {
 	<div id="error-popup" class="error-popup">
 		<div class="container" id="error-popup-text">/**/</div>
 	</div>
+}
+
+templ TimeAgo(t time.Time, class string) {
+	<span class={class} title={t.Format("02.01.2006 15:04:05 MST")}>
+		{consts.TimeAgo(t)}
+	</span>
 }
 
 templ header(user server.MaybeUser) {

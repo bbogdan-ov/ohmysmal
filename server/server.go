@@ -12,7 +12,7 @@ import (
 )
 
 // TODO: move the password into an .env file.
-const SOURCE_NAME = "root:root@/ohmysmal"
+const SOURCE_NAME = "root:root@/ohmysmal?parseTime=true&loc=Local"
 
 var (
 	ErrUserNotFound = errors.New("user not found")
@@ -38,11 +38,12 @@ const (
 )
 
 type User struct {
-	Id       uint
-	Nickname string
-	Password string
-	Role     UserRole
-	Status   UserStatus
+	Id           uint
+	Nickname     string
+	Password     string
+	Role         UserRole
+	Status       UserStatus
+	RegisterDate time.Time
 }
 
 type Snippet struct {
@@ -52,7 +53,8 @@ type Snippet struct {
 	Flowers  uint
 	Comments uint
 	Status   SnippetStatus
-	Date     string
+	Date     time.Time
+	RemixOf  uuid.UUID
 
 	AuthorNickname   string // Joined.
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
@@ -73,7 +75,7 @@ type Comment struct {
 	AuthorId       uint
 	SnippetId      uuid.UUID
 	Text           string
-	Date           string
+	Date           time.Time
 	AuthorNickname string // Joined.
 }
 
@@ -102,7 +104,7 @@ func requestUserWith(r *http.Request, db *sql.DB, condition string, params ...an
 	defer cancel()
 
 	row := db.QueryRowContext(ctx, "SELECT * FROM users_with_enums "+condition, params...)
-	err = row.Scan(&user.Id, &user.Nickname, &user.Password, &user.Role, &user.Status)
+	err = row.Scan(&user.Id, &user.Nickname, &user.Password, &user.Role, &user.Status, &user.RegisterDate)
 
 	if err == sql.ErrNoRows {
 		return User{}, ErrUserNotFound
@@ -254,6 +256,7 @@ func RowScanSnippet(row *sql.Row, s *Snippet) error {
 		&s.Comments,
 		&s.Status,
 		&s.Date,
+		&s.RemixOf,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)
@@ -267,6 +270,7 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 		&s.Comments,
 		&s.Status,
 		&s.Date,
+		&s.RemixOf,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)

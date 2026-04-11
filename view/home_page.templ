@@ -40,6 +40,10 @@ templ snippet(s server.Snippet) {
 			<span class="muted">{"@"}{s.AuthorNickname}</span>
 		</p>
 
-		<span class="stats muted">{s.Flowers} flowers : {s.Comments} comments : {s.Date}</span>
+		<span class="stats muted">
+			{s.Flowers} flowers :
+			{s.Comments} comments :&#160;
+			@TimeAgo(s.Date, "")
+		</span>
 	</article>
 }

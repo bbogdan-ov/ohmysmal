@@ -64,7 +64,7 @@ templ snippetFoundPage(
 				<div class="flex-column width-fill">
 					<div class="width-fill flex justify-between gap-2">
 						<h2>{s.Title}</h2>
-						<span class="muted">{s.Date}</span>
+						@TimeAgo(s.Date, "muted")
 					</div>
 					<span>{"@"}{s.AuthorNickname}</span>
 				</div>

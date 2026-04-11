@@ -19,12 +19,14 @@ import (
 func main() {
 	username := envOr("OHMYSMAL_USERNAME", "root")
 	password := envOr("OHMYSMAL_PASSWORD", "root")
+	secret := envOr("OHMYSMAL_SECRET", "secret")
 	port := envOr("OHMYSMAL_PORT", "8080")
 	cert := envOr("OHMYSMAL_CERT", "")
 	key := envOr("OHMYSMAL_KEY", "")
 
 	log.Printf("OHMYSMAL_USERNAME = (%t)", username != "")
 	log.Printf("OHMYSMAL_PASSWORD = (%t)", password != "")
+	log.Printf("OHMYSMAL_SECRET = (%t)", secret != "")
 	log.Printf("OHMYSMAL_PORT = %q", port)
 	log.Printf("OHMYSMAL_CERT = %q", cert)
 	log.Printf("OHMYSMAL_KEY = %q", key)
@@ -35,7 +37,7 @@ func main() {
 	cache := cache.New(time.Second, time.Second*5)
 
 	// Setup session storage.
-	store := sessions.NewCookieStore([]byte("secret")) // TODO: pass a secret key through env vars.
+	store := sessions.NewCookieStore([]byte(secret))
 
 	// Setup database.
 	db := server.ConnectDatabase(username, password)

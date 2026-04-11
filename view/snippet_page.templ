@@ -98,14 +98,14 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
 
 		<div
 			if !authed {
-				class="flower-jar"
+				class="flower-pot"
 				title="Log in to give a flower"
 				onclick="openAuthForms()"
 			} else if active {
-				class="flower-jar active"
+				class="flower-pot active"
 				title="Take the flower back"
 			} else {
-				class="flower-jar"
+				class="flower-pot"
 				title="Give a flower"
 			}
 			if authed {

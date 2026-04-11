@@ -314,13 +314,13 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	user-select: none;
 }
 
-.flower-jar {
+.flower-pot {
 	width: 32px;
 	height: 48px;
 
 	margin-top: 1rem;
 
-	background: url("/static/images/flower-jar.png");
+	background: url("/static/images/flower-pot.png");
 	background-position: 0 0;
 
 	cursor: pointer;

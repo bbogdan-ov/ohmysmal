@@ -116,7 +116,7 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
 		>
 			<div class="tip muted">
 				if !authed {
-					<i class="tip-text">Log in to give a flower!</i>
+					<i class="tip-text">~ log in to give a flower ~</i>
 				} else if active {
 					<i class="tip-text">You gave a flower!</i>
 					<i class="tip-loading">Taking the flower back...</i>
@@ -157,27 +157,33 @@ templ snippetComments(
 			<span class="text-small muted">{len(comments)} comments</span>
 		}
 
-		<form
-			class="comment-form"
-			if !user.Ok {
-				inert
-			}
-			hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
-			hx-target="#comments-list"
-			hx-swap="afterbegin"
-			hx-on::after-request="if(event.detail.successful) this.reset()"
-		>
-			<textarea
-				name="text"
-				placeholder="Your thoughts..."
-				required
-				maxlength={consts.MAX_COMMENT_TEXT_LEN}
-			></textarea>
-			<button type="submit" class="link-ish">
-				send
-				@icon("plane")
-			</button>
-		</form>
+		if user.Ok {
+			<form
+				class="comment-form"
+				hx-post={ fmt.Sprintf("/api/comment/%s", s.Id) }
+				hx-target="#comments-list"
+				hx-swap="afterbegin"
+				hx-on::after-request="if(event.detail.successful) this.reset()"
+			>
+				<div class="comment-textarea">
+					<div class="shadow"></div>
+					<div class="wrapper">
+						<textarea
+							name="text"
+							placeholder="Carefully write down your thoughts here..."
+							required
+							maxlength={consts.MAX_COMMENT_TEXT_LEN}
+							oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+						></textarea>
+						<button type="submit" class="link-ish">
+							@icon("plane")
+						</button>
+					</div>
+				</div>
+			</form>
+		} else {
+			<i class="muted">~ log in to leave a comment ~</i>
+		}
 
 		<div id="comments-list">
 			for _, c := range comments {

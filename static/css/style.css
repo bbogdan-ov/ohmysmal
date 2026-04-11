@@ -418,28 +418,72 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	gap: 0.5rem;
 	transition: .3s;
 
-	textarea {
-		height: 160px;
-	}
-
 	&.htmx-request {
 		opacity: 0.5;
 		pointer-events: none;
 	}
+}
+.comment-textarea {
+	width: 100%;
+	height: fit-content;
 
-	&[inert] {
+	margin-bottom: 8px;
+
+	.wrapper {
+		display: flex;
+		align-items: flex-end;
+		gap: 0.5rem;
+
+		background: var(--background);
+		border-radius: 2px 2px 0 0;
+		border: 1px solid var(--muted);
+		border-bottom: none;
+
+		button {
+			margin-bottom: 5px;
+		}
+	}
+	textarea {
+		width: 100%;
+		padding: 0.25em 0.5em;
+		height: 1.9em;
+		background: transparent;
+		border-radius: 0;
+		border: none;
+		resize: none;
+	}
+	.shadow {
+		width: calc(100% - 16px);
+		height: 32px;
+
+		position: absolute;
+		left: 8px;
+		top: 100%;
+
+		background: url("/static/images/textarea-shadow.png");
+		background-position: 0 -32px;
+		background-repeat: no-repeat repeat-x;
+		
 		pointer-events: none;
 
-		&::after {
-			content: "Log in before commenting!";
+		&::after, &::before {
+			content: "";
+
+			width: 16px;
+			height: 32px;
 
 			position: absolute;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			inset: 0;
+			right: 100%;
+			top: 0;
 
-			background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAAAD+Fb1AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAAd0SU1FB+oECw8rGUDNoREAAAAdSURBVAjXY+T/z8DI8J+BkYGBgf8/AwP/f0YMEQCSOghZn+Q0fAAAAABJRU5ErkJggg==);
+			background: url("/static/images/textarea-shadow.png");
+			background-position: 0 0;
+			background-repeat: no-repeat;
+		}
+		&::before {
+			background-position: 0 -64px;
+			right: unset;
+			left: 100%;
 		}
 	}
 }
@@ -682,10 +726,6 @@ textarea {
 	border-radius: 2px;
 	resize: vertical;
 	outline: none;
-
-	&:focus {
-		border-color: var(--text-color);
-	}
 }
 label > span {
 	opacity: .5;

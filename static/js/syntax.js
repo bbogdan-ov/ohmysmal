@@ -17,9 +17,6 @@ CodeMirror.defineMode("uxnsmal", function(config, parserConfig) {
 		"break", "loop", "return", "rom", "include", "if", "elif", "else"
 	]);
 
-	var indentTokens = wordRE(["\\(", "{"]);
-	var dedentTokens = wordRE(["\\)", "}"]);
-
 	function normal(stream, state) {
 		var ch = stream.next();
 
@@ -87,15 +84,7 @@ CodeMirror.defineMode("uxnsmal", function(config, parserConfig) {
 				else if (builtins.test(word)) style = "builtin";
 				else if (specials.test(word)) style = "variable-2";
 			}
-			if ((style != "comment") && (style != "string")){
-				if (indentTokens.test(word)) ++state.indentDepth;
-				else if (dedentTokens.test(word)) --state.indentDepth;
-			}
 			return style;
-		},
-
-		indent: function(state, textAfter) {
-			return state.basecol + indentUnit * state.indentDepth;
 		},
 
 		lineComment: "//",

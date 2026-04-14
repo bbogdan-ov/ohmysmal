@@ -278,7 +278,7 @@ function initPublishForm(editor) {
 
 		form.classList.add("htmx-request");
 
-		const data = new FormData();
+		const data = new FormData(form);
 		formAppendSource(data, editor)
 
 		const res = await fetch("/api/snippet", {

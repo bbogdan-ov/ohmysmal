@@ -1,6 +1,6 @@
 import { initCompiler } from "./compiler.js";
 import { fetchSnippetSource } from "./snippet.js";
-import { initEditor } from "./editor.js";
+import { editorConfig } from "./editor.js";
 
 const DEFAULT_CODE = `\
 // hello
@@ -83,7 +83,13 @@ async function init() {
 
 	// Init the text editor.
 	const editorStats = document.getElementById("editor-stats");
-	const editor = initEditor(DEFAULT_CODE);
+	const editor = CodeMirror.fromTextArea(
+		document.getElementById("snippet-source"),
+		editorConfig(),
+	);
+	if (editor.getValue() == "") {
+		editor.setValue(DEFAULT_CODE)
+	}
 	let changed = false;
 
 	function updateStats() {
@@ -132,22 +138,6 @@ async function init() {
 	// Init the UXNSMAL compiler.
 	setLoadingText("Loading the UXNSMAL compiler...");
 	const { compile } = await initCompiler(load, addProblem, addNote);
-
-	// Load snippet source code if any.
-	const params = new URLSearchParams(new URL(window.location.href).search);
-	const snippetId = params.get("snippet");
-	if (snippetId != null) {
-		setLoadingText("Loading snippet source code...");
-
-		try {
-			const source = await fetchSnippetSource(snippetId);
-			editor.setValue(source);
-		} catch (err) {
-			editor.setValue(`// ${err}\n// Failed to load the snippet...`);
-		}
-
-		changed = false;
-	}
 
 	setLoadingText("Compiling the snippet...");
 	recompile();
@@ -275,7 +265,7 @@ function initPublishForm(editor) {
 
 		form.classList.add("htmx-request");
 
-		const blob = new Blob([editor.getValue()], {
+		const blob = new Blob([editor.getValue().trim()], {
 			type: "text/plain; charset=utf-8"
 		});
 
@@ -292,7 +282,6 @@ function initPublishForm(editor) {
 
 		if (!res.ok) {
 			setErrorPopup(res.status, text);
-			console.error("Failed to post the snippet!");
 			return;
 		}
 

@@ -1,6 +1,6 @@
 import { initCompiler } from "./compiler.js";
 import { fetchSnippetSource } from "./snippet.js";
-import { initEditor } from "./editor.js";
+import { editorConfig } from "./editor.js";
 
 async function init() {
 	const container = document.getElementById("container");
@@ -35,7 +35,7 @@ async function init() {
 	console.log("TODO: done loading");
 
 	// Init the text editor.
-	const editor = initEditor("// Loading...", "editor-wrapper", true);
+	const editor = editorConfig(document.getElementById("editor-wrapper"), "// Loading...", true);
 
 	const params = new URLSearchParams(new URL(window.location.href).search);
 	const snippetId = params.get("id");

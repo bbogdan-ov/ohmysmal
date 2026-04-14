@@ -64,7 +64,19 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUserOrFalse(session)
 
-	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: authed}))
+	var source string
+	var err error
+
+	snippetId, hasId := UUIDQueryGetOrFalse(r, "snippet")
+	if hasId {
+		source, err = server.SnippetSource(h.db, r.Context(), snippetId)
+		if err != nil {
+			ErrorPage(w, r, err)
+			return
+		}
+	}
+
+	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: authed}, source))
 	v.ServeHTTP(w, r)
 }
 

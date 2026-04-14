@@ -115,7 +115,9 @@ func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (source string
 func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.FileHeader) error {
 	// TODO: check for text file.
 
-	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
+	if header.Size == 0 {
+		return BadRequestError{"Source file can't be empty!"}
+	} else if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
 		msg := fmt.Sprintf("Source file is too large! It should not exceed %d bytes of size, got %d.", consts.MAX_SNIPPET_FILE_SIZE, header.Size)
 		return BadRequestError{msg}
 	}

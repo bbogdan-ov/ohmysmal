@@ -1,9 +1,7 @@
 import "./syntax.js";
 
-export function initEditor(value = "", wrapperId = "editor-wrapper", readOnly = false) {
-	const wrapper = document.getElementById(wrapperId);
-
-	const editor = CodeMirror(wrapper, {
+export function editorConfig(value = "", readOnly = false) {
+	return {
 		mode: "uxnsmal",
 		lineNumbers: !readOnly,
 		indentUnit: 4,
@@ -17,7 +15,5 @@ export function initEditor(value = "", wrapperId = "editor-wrapper", readOnly = 
 		value,
 		readOnly,
 		cursorHeight: readOnly ? 0 : 1,
-	});
-
-	return editor;
+	}
 }

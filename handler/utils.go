@@ -110,14 +110,26 @@ func UUIDPathValue(r *http.Request, name string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func UUIDQueryGet(r *http.Request, name string) (uuid.UUID, error) {
+func UUIDQueryGetOrFalse(r *http.Request, name string) (id uuid.UUID, found bool) {
+	str := r.URL.Query().Get(name)
+	if str == "" {
+		return id, false
+	}
+	id, err := uuid.Parse(str)
+	if err != nil {
+		return id, false
+	}
+
+	return id, true
+}
+func UUIDQueryGet(r *http.Request, name string) (id uuid.UUID, err error) {
 	str := r.URL.Query().Get(name)
 	if str == "" {
 		msg := fmt.Sprintf(`no "%s" query param is provided in the URL`, name)
 		return uuid.UUID{}, server.BadRequestError{msg}
 	}
 
-	id, err := uuid.Parse(str)
+	id, err = uuid.Parse(str)
 	if err != nil {
 		msg := fmt.Sprintf(`query param "%s" is an invalid UUID: %s`, name, err)
 		return uuid.UUID{}, server.BadRequestError{msg}

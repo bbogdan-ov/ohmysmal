@@ -5,7 +5,7 @@ import (
 	"ohmysmal/consts"
 )
 
-templ EditorPage(user server.MaybeUser) {
+templ EditorPage(user server.MaybeUser, snippetSource string) {
 	@page() {
 		@pageHead("editor") {
 			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
@@ -15,21 +15,9 @@ templ EditorPage(user server.MaybeUser) {
 		@pageBody() {
 			<div class="editor-page">
 				<div class="editor-container">
-					<div id="editor-wrapper">/* the text editor goes here */</div>
+					<textarea id="snippet-source">{snippetSource}</textarea>
 
-					<div class="statusbar">
-						<div class="row gap-2">
-							<a href="/" class="link-ish">
-								@icon("home")
-								home
-							</a>
-							<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
-							if user.Ok {
-								<span id="publish-button" class="link-ish">publish</span>
-							}
-						</div>
-						<span id="editor-stats" class="muted">/**/</span>
-					</div>
+					@editorStatusbar(user)
 				</div>
 
 				<div class="editor-sidebar">
@@ -71,6 +59,19 @@ templ EditorPage(user server.MaybeUser) {
 			<script type="module" src="/static/js/editor_page.js"></script>
 		}
 	}
+}
+
+templ editorStatusbar(user server.MaybeUser) {
+	<div class="statusbar">
+		<div class="row gap-2">
+			<a href="/" class="link-ish">@icon("home") home</a>
+			<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
+			if user.Ok {
+				<span id="publish-button" class="link-ish">publish</span>
+			}
+		</div>
+		<span id="editor-stats" class="muted">/**/</span>
+	</div>
 }
 
 templ uxnScripts() {

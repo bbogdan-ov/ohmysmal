@@ -35,22 +35,21 @@ templ snippet(s server.Snippet) {
 	<article class="snippet">
 		<p>
 			<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
-			<span class="muted">
-				<span>{"@"}{s.AuthorNickname}</span>
-				·&#160;
-				@TimeAgo(s.Date, "")
-			</span>
+			<span class="muted">{"@"}{s.AuthorNickname}</span>
 		</p>
 
-		<span class="snippet-info row gap-2">
-			<span>
-				@icon("lil-flower")
-				{s.Flowers}
-			</span>
-			<span>
-				@icon("lil-comment")
-				{s.Comments}
-			</span>
-		</span>
+		<div class="snippet-info row width-fill justify-between">
+			<div class="row gap-2">
+				<span>
+					@icon("lil-flower")
+					{s.Flowers}
+				</span>
+				<span>
+					@icon("lil-comment")
+					{s.Comments}
+				</span>
+			</div>
+			@TimeAgo(s.Date, "")
+		</div>
 	</article>
 }

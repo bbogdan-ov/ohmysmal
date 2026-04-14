@@ -1,6 +1,8 @@
 package view
 
 import (
+	"fmt"
+
 	"ohmysmal/server"
 	"ohmysmal/consts"
 )
@@ -21,6 +23,9 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 				</div>
 
 				<div class="editor-sidebar">
+					if snippet.Ok {
+						@editorSnippetInfo(snippet.Snippet)
+					}
 					<div id="editor-problems">
 					</div>
 				</div>
@@ -34,20 +39,7 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 			</div>
 
 			if user.Ok {
-				<div class="publish-modal" id="editor-publish-modal">
-					<form
-						id="editor-publish-form"
-						class="form"
-					>
-						<textarea
-							name="title"
-							placeholder="My great snippet..."
-							required
-							maxlength={consts.MAX_SNIPPET_TITLE_LEN}
-						></textarea>
-						<button class="button" type="submit">publish as {user.Nickname}!</button>
-					</form>
-				</div>
+				@editorPublishModal(user.User)
 			}
 
 			<div id="loader">
@@ -61,18 +53,60 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 	}
 }
 
+templ editorSnippetInfo(s server.Snippet) {
+	<div class="editor-snippet-info">
+		<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>go to the original snippet</a>
+
+		<div class="flex-column width-fill">
+			<div class="width-fill flex justify-between gap-2">
+				<h2>{s.Title}</h2>
+				@TimeAgo(s.Date, "muted text-nowrap")
+			</div>
+			<span>{"@"}{s.AuthorNickname}</span>
+		</div>
+
+		<span class="muted">{s.Flowers} flowers and {s.Comments} comments</span>
+	</div>
+}
+
 templ editorStatusbar(user server.MaybeUser, snippet server.MaybeSnippet) {
 	<div class="statusbar">
 		<div class="row gap-2">
 			<a href="/" class="link-ish">@icon("home") home</a>
+
 			<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
-			if user.Ok && snippet.Ok {
+
+			if user.Ok && snippet.Ok && snippet.AuthorId == user.Id {
 				<span id="upload-button" class="link-ish" >upload changes</span>
 			} else if user.Ok {
 				<span id="publish-button" class="link-ish">publish</span>
 			}
 		</div>
-		<span id="editor-stats" class="muted">/**/</span>
+
+		<div class="row gap-2">
+			if user.Ok {
+				<span class="muted">{"@"}{user.Nickname}</span>
+			}
+
+			<span id="editor-stats" class="muted">/**/</span>
+		</div>
+	</div>
+}
+
+templ editorPublishModal(user server.User) {
+	<div class="publish-modal" id="editor-publish-modal">
+		<form
+			id="editor-publish-form"
+			class="form"
+		>
+			<textarea
+				name="title"
+				placeholder="My great snippet..."
+				required
+				maxlength={consts.MAX_SNIPPET_TITLE_LEN}
+			></textarea>
+			<button class="button" type="submit">publish as {user.Nickname}!</button>
+		</form>
 	</div>
 }
 

@@ -71,6 +71,7 @@ body {
 .mb-auto { margin-bottom: auto; }
 
 .text-center { text-align: center; }
+.text-nowrap { text-wrap: nowrap; }
 .muted { color: var(--muted); }
 .text-yellow { color: var(--yellow); }
 .text-red { color: var(--red); }
@@ -109,7 +110,7 @@ body {
 /* -------------------- */
 
 .editor-page {
-	--border-color: var(--text-color);
+	--border-color: var(--muted);
 
 	width: 100%;
 	height: 100vh;
@@ -129,13 +130,18 @@ body {
 	}
 }
 .editor-sidebar {
-	padding-left: 4px;
-
 	display: flex;
 	flex-direction: column;
 
 	background: var(--background);
-	border-left: 1px solid var(--muted);
+	border-left: 1px solid var(--border-color);
+
+	.editor-snippet-info {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
 
 	#editor-problems {
 		padding: .5rem;

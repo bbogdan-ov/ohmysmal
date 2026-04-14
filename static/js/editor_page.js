@@ -70,6 +70,8 @@ alias enum byte Datetime {
 	isdst  { 0xca }
 }`;
 
+let changed = false;
+
 async function init() {
 	// Init the UXN VARVARA emulator.
 	const emu = new Emu();
@@ -89,7 +91,6 @@ async function init() {
 	if (editor.getValue() == "") {
 		editor.setValue(DEFAULT_CODE)
 	}
-	let changed = false;
 
 	function updateStats() {
 		const { line, ch } = editor.getCursor();
@@ -294,6 +295,7 @@ function initPublishForm(editor) {
 			return;
 		}
 
+		changed = false;
 		window.location.replace(`/snippet?id=${text}`);
 	}
 

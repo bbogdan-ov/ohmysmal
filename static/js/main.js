@@ -20,7 +20,14 @@ function setErrorPopup(status, msg) {
 	const popup = document.getElementById("error-popup");
 	const popupText = document.getElementById("error-popup-text");
 	popup.classList.add("active");
-	popupText.textContent = `${status}: ${msg}`;
+
+	if (400 <= status && status < 500) {
+		popupText.textContent = `${msg}`;
+	} else if (500 <= status && status < 600) {
+		popupText.textContent = `Server error: ${msg}`;
+	} else {
+		popupText.textContent = `Unknown error ${status}: ${msg}`;
+	}
 
 	clearTimeout(timeout);
 	timeout = setTimeout(() => {

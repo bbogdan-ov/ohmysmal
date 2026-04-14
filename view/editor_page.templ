@@ -19,7 +19,10 @@ templ EditorPage(user server.MaybeUser) {
 
 					<div class="statusbar">
 						<div class="row gap-2">
-							<a href="/" title="Go home">@icon("home")</a>
+							<a href="/" class="link-ish">
+								@icon("home")
+								home
+							</a>
 							<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
 							if user.Ok {
 								<span id="publish-button" class="link-ish">publish</span>

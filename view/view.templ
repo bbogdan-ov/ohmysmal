@@ -29,7 +29,17 @@ templ TimeAgo(t time.Time, class string) {
 
 templ header(user server.MaybeUser) {
 	<header class="header">
-		<a href="/" title="Go home">@icon("home")</a>
+		<div class="row gap-2">
+			<a href="/" class="link-ish">
+				@icon("home")
+				home
+			</a>
+			<a href="/editor" class="link-ish">
+				@icon("editor")
+				editor
+			</a>
+		</div>
+
 		if user.Ok {
 			<div class="row gap-1">
 				<span>{"@"}{user.User.Nickname}</span>

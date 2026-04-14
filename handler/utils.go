@@ -60,12 +60,12 @@ func (h Handler) DefaultSession(r *http.Request) *sessions.Session {
 func UintPathValue(r *http.Request, name string) (uint, error) {
 	str := r.PathValue(name)
 	if str == "" {
-		return 0, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
+		return 0, BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
 	}
 
 	num, err := strconv.ParseUint(str, 10, 32)
 	if err != nil {
-		return 0, BadRequestError{fmt.Sprintf(`param "%s" is not a 'uint': %s`, name, err)}
+		return 0, BadRequestError{fmt.Sprintf(`path value "%s" is not a 'uint': %s`, name, err)}
 	}
 
 	return uint(num), nil
@@ -75,12 +75,28 @@ func UintPathValue(r *http.Request, name string) (uint, error) {
 func UUIDPathValue(r *http.Request, name string) (uuid.UUID, error) {
 	str := r.PathValue(name)
 	if str == "" {
-		return uuid.UUID{}, BadRequestError{fmt.Sprintf(`no "%s" is provided in the URL`, name)}
+		return uuid.UUID{}, BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
 	}
 
 	id, err := uuid.Parse(str)
 	if err != nil {
-		msg := fmt.Sprintf(`param "%s" is an invalid UUID: %s`, name, err)
+		msg := fmt.Sprintf(`path value "%s" is an invalid UUID: %s`, name, err)
+		return uuid.UUID{}, BadRequestError{msg}
+	}
+
+	return id, nil
+}
+
+func UUIDQueryGet(r *http.Request, name string) (uuid.UUID, error) {
+	str := r.URL.Query().Get(name)
+	if str == "" {
+		msg := fmt.Sprintf(`no "%s" query param is provided in the URL`, name)
+		return uuid.UUID{}, BadRequestError{msg}
+	}
+
+	id, err := uuid.Parse(str)
+	if err != nil {
+		msg := fmt.Sprintf(`query param "%s" is an invalid UUID: %s`, name, err)
 		return uuid.UUID{}, BadRequestError{msg}
 	}
 

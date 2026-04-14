@@ -11,8 +11,8 @@ func TimeAgo(t time.Time) string {
 	switch {
 	case dur < time.Minute:
 		secs := int(dur.Seconds())
-		if secs == 1 {
-			return fmt.Sprintf("%d second ago", secs)
+		if 0 <= secs && secs <= 2 {
+			return fmt.Sprintf("just now")
 		} else {
 			return fmt.Sprintf("%d seconds ago", secs)
 		}

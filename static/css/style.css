@@ -65,9 +65,15 @@ body {
 .width-fill { width: 100%; }
 .height-fill { height: 100%; }
 
+.ml-auto { margin-left: auto; }
+.mt-auto { margin-top: auto; }
+.mr-auto { margin-right: auto; }
+.mb-auto { margin-bottom: auto; }
+
 .text-center { text-align: center; }
 .muted { color: var(--muted); }
 .text-yellow { color: var(--yellow); }
+.text-red { color: var(--red); }
 .text-small {
 	font-size: 0.8rem;
 	font-family: monospace;
@@ -360,9 +366,6 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 		background-position: -32px 0;
 	}
 	&.htmx-request {
-		opacity: 0.5;
-		pointer-events: none;
-
 		.tip-text { display: none; }
 		.tip-loading { display: initial; }
 	}
@@ -423,6 +426,7 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 		gap: 0.5rem;
 
 		.comment-content {
+			width: 100%;
 			display: flex;
 			flex-direction: column;
 		}
@@ -435,11 +439,6 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	align-items: flex-end;
 	gap: 0.5rem;
 	transition: .3s;
-
-	&.htmx-request {
-		opacity: 0.5;
-		pointer-events: none;
-	}
 }
 .comment-textarea {
 	width: 100%;
@@ -648,6 +647,11 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	cursor: none;
 }
 
+.htmx-request {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
 h1, h2, h3, h4 {
 	font-family: var(--title-font);
 }
@@ -676,10 +680,6 @@ hr {
 		width: 100%;
 		margin-top: auto;
 	}
-}
-form.htmx-request button[type=submit] {
-	opacity: .5;
-	pointer-events: none;
 }
 .form-result {
 	color: var(--red);
@@ -722,11 +722,6 @@ input {
 	}
 	&.active {
 		background: blue;
-	}
-
-	&.htmx-request {
-		pointer-events: none;
-		opacity: 0.5;
 	}
 }
 button {
@@ -786,6 +781,7 @@ button.link-ish {
 	&.icon-plane   { --icon-index: 3; }
 	&.icon-eye     { --icon-index: 4; }
 	&.icon-comment { --icon-index: 5; }
+	&.icon-trash   { --icon-index: 6; margin-inline: -6px; }
 
 	background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0;
 }

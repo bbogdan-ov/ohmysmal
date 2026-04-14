@@ -56,7 +56,7 @@ func main() {
 	http.HandleFunc("/api/register", h.UserCacheMiddleware(h.HandleApiRegister))
 	http.HandleFunc("/api/snippet", h.UserCacheMiddleware(h.HandleApiSnippet))
 	http.HandleFunc("/api/flower/{snippet_id}", h.UserCacheMiddleware(h.HandleApiFlower))
-	http.HandleFunc("/api/comment/{snippet_id}", h.UserCacheMiddleware(h.HandleApiComment))
+	http.HandleFunc("/api/comment/{id}", h.UserCacheMiddleware(h.HandleApiComment))
 
 	static := http.Dir("static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(static)))

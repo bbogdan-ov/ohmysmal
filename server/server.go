@@ -21,7 +21,8 @@ type UserStatus int
 type SnippetStatus int
 
 const (
-	ROLE_USER UserRole = iota
+	ROLE_INVALID  UserRole = iota
+	ROLE_USER
 	ROLE_ADMIN
 )
 
@@ -217,9 +218,7 @@ func RequestSnippet(
 
 func RequestSnippetComments(db *sql.DB, id uuid.UUID, comments *[]Comment) (err error) {
 	rows, err := db.Query(`
-	SELECT comments.*, users.nickname as author_nickname
-	FROM comments
-	JOIN users ON author_id = users.id
+	SELECT * FROM comments_with_author
 	WHERE snippet_id = ?
 	ORDER BY date DESC
 	`, id[:])
@@ -235,7 +234,7 @@ func RequestSnippetComments(db *sql.DB, id uuid.UUID, comments *[]Comment) (err 
 			break
 		}
 
-		err = rows.Scan(&c.Id, &c.SnippetId, &c.AuthorId, &c.Text, &c.Date, &c.AuthorNickname)
+		err = RowsScanComment(rows, &c)
 		if err != nil {
 			return err
 		}
@@ -273,4 +272,32 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)
+}
+
+func RowScanComment(row *sql.Row, c *Comment) error {
+	return row.Scan(
+		&c.Id,
+		&c.SnippetId,
+		&c.AuthorId,
+		&c.Text,
+		&c.Date,
+		&c.AuthorNickname,
+	)
+}
+func RowsScanComment(rows *sql.Rows, c *Comment) error {
+	return rows.Scan(
+		&c.Id,
+		&c.SnippetId,
+		&c.AuthorId,
+		&c.Text,
+		&c.Date,
+		&c.AuthorNickname,
+	)
+}
+
+func UserCanDeleteSnippet(user User, snippet Snippet) bool {
+	return user.Role == ROLE_ADMIN || snippet.AuthorId == user.Id
+}
+func UserCanDeleteComment(user User, comment Comment) bool {
+	return user.Role == ROLE_ADMIN || comment.AuthorId == user.Id
 }

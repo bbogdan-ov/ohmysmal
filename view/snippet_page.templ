@@ -54,8 +54,12 @@ templ snippetFoundPage(
 				</div>
 
 				<div class="muted text-small flex gap-2">
+					<span id="display-zoom-button" class="link-ish" title="Zoom">x1</span>
 					<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
-					<span id="display-zoom-button" class="link-ish">x1</span>
+
+					if user.Ok && server.UserCanDeleteSnippet(user.User, s) {
+						@snippetDeleteButton(s.Id)
+					}
 				</div>
 
 				<hr />
@@ -190,21 +194,51 @@ templ SnippetComments(
 
 		<div class="comments-list">
 			for _, c := range comments {
-				@Comment(c)
+				@Comment(user, c)
 			}
 		</div>
 	</div>
 }
 
-templ Comment(c server.Comment) {
+templ Comment(user server.MaybeUser, c server.Comment) {
 	<div class="comment">
 		@icon("comment")
 		<div class="comment-content">
-			<span class="muted">
-				{"@"}{c.AuthorNickname} &#160;·&#160;&#160;
+			<div class="row muted gap-1 width-fill">
+				{"@"}{c.AuthorNickname}
+				<span>·</span>
 				@TimeAgo(c.Date, "")
-			</span>
+
+				if user.Ok && server.UserCanDeleteComment(user.User, c) {
+					<span>·</span>
+					@commentDeleteButton(c.Id)
+				}
+			</div>
 			<p>{c.Text}</p>
 		</div>
 	</div>
+}
+
+templ commentDeleteButton(id uint) {
+	<span
+		class="link-ish text-red"
+		title="Delete this comment"
+		hx-confirm="Are you sure you want to delete this comment?"
+		hx-delete={ fmt.Sprintf("/api/comment/%d", id) }
+		hx-target="#snippet-comments"
+		hx-swap="outerHTML"
+	>
+		@icon("trash")
+	</span>
+}
+
+templ snippetDeleteButton(id uuid.UUID) {
+	<span
+		class="link-ish text-red"
+		title="Delete this snippet"
+		hx-confirm="Are you sure you want to delete this snippet?"
+		hx-delete={ fmt.Sprintf("/api/snippet?id=%s", id) }
+	>
+		@icon("trash")
+	</span>
 }

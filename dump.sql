@@ -34,7 +34,7 @@ CREATE TABLE `comments` (
   KEY `key_comments_snippet_id` (`snippet_id`),
   CONSTRAINT `fk_comments_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_snippet_id` FOREIGN KEY (`snippet_id`) REFERENCES `snippets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -72,6 +72,23 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
+-- Temporary table structure for view `comments_with_author`
+--
+
+DROP TABLE IF EXISTS `comments_with_author`;
+/*!50001 DROP VIEW IF EXISTS `comments_with_author`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `comments_with_author` AS SELECT
+ 1 AS `id`,
+  1 AS `snippet_id`,
+  1 AS `author_id`,
+  1 AS `text`,
+  1 AS `date`,
+  1 AS `author_nickname` */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `flowers`
@@ -228,6 +245,24 @@ SET character_set_client = utf8mb4;
 SET character_set_client = @saved_cs_client;
 
 --
+-- Final view structure for view `comments_with_author`
+--
+
+/*!50001 DROP VIEW IF EXISTS `comments_with_author`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `comments_with_author` AS select `comments`.`id` AS `id`,`comments`.`snippet_id` AS `snippet_id`,`comments`.`author_id` AS `author_id`,`comments`.`text` AS `text`,`comments`.`date` AS `date`,`users`.`nickname` AS `author_nickname` from (`comments` join `users` on(`comments`.`author_id` = `users`.`id`)) */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
 -- Final view structure for view `snippets_with_author`
 --
 
@@ -272,4 +307,4 @@ SET character_set_client = @saved_cs_client;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-04-12  0:49:45
+-- Dump completed on 2026-04-14 19:52:03

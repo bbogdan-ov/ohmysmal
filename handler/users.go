@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+	"time"
 	"log"
 	"net/http"
 	"reflect"
@@ -119,8 +121,11 @@ func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
 		return UserError{"This nickname is already taken by someone else :("}
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
 	// Insert user to the server.
-	result, err := h.db.Exec("INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
+	result, err := h.db.ExecContext(ctx, "INSERT INTO users (nickname, password) VALUES (?, ?)", nickname, hashedPassword)
 	if err != nil {
 		log.Printf("USERS: ERROR: Registration failed: Failed to insert user data into the database: %s", err)
 		return err

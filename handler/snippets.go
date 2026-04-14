@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"ohmysmal/consts"
+	"ohmysmal/server"
 )
 
 const SNIPPETS_DIR = "./snippets"
@@ -57,8 +58,11 @@ func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 		return uuid.UUID{}, err
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
 	// Insert snippet to the database.
-	_, err = h.db.Exec("INSERT INTO snippets (id, author_id, title) VALUES (?, ?, ?)", id[:], user.Id, title)
+	_, err = h.db.ExecContext(ctx, "INSERT INTO snippets (id, author_id, title) VALUES (?, ?, ?)", id[:], user.Id, title)
 	if err != nil {
 		log.Printf("SNIPPETS: ERROR: Snippet posting failed: Failed to insert the snippet data into the database: %s", err)
 		return uuid.UUID{}, err
@@ -68,14 +72,9 @@ func (h Handler) postSnippet(r *http.Request) (id uuid.UUID, err error) {
 }
 
 func (h Handler) snippetSource(w http.ResponseWriter, r *http.Request) (err error) {
-	idStr := r.URL.Query().Get("id")
-	if idStr == "" {
-		return BadRequestError{"no id query param is provided"}
-	}
-
-	id, err := uuid.Parse(idStr)
+	id, err := UUIDQueryGet(r, "id")
 	if err != nil {
-		return BadRequestError{err.Error()}
+		return err
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -156,7 +155,7 @@ func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers ui
 
 	// Give a flower to the snippet if the user haven't gave it before.
 	// The number of flowers in the snippet row will be updated automatically because of triggers.
-	result, err := tx.Exec("INSERT IGNORE INTO flowers (user_id, snippet_id) VALUES (?, ?)", user.Id, idBytes)
+	result, err := tx.ExecContext(ctx, "INSERT IGNORE INTO flowers (user_id, snippet_id) VALUES (?, ?)", user.Id, idBytes)
 	if err != nil {
 		return uuid.UUID{}, 0, false, err
 	}
@@ -165,7 +164,7 @@ func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers ui
 		// 0 rows were modified meaning that a flower was already given to the snippet. Take it back!!
 		// Again, the number of flowers in the snippet row will be updated
 		// automatically by MySql.
-		_, err := tx.Exec("DELETE FROM flowers WHERE user_id = ? AND snippet_id = ?", user.Id, idBytes)
+		_, err := tx.ExecContext(ctx, "DELETE FROM flowers WHERE user_id = ? AND snippet_id = ?", user.Id, idBytes)
 		if err != nil {
 			return uuid.UUID{}, 0, false, err
 		}
@@ -183,6 +182,31 @@ func (h Handler) flowerSnippet(r *http.Request) (snippetId uuid.UUID, flowers ui
 	}
 
 	return snippetId, flowers, flowered, tx.Commit()
+}
+
+func (h Handler) deleteSnippet(r *http.Request, user server.User, id uuid.UUID) error {
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	var authorId uint
+	row := h.db.QueryRowContext(ctx, "SELECT author_id FROM snippets WHERE id = ?", id[:])
+	err := row.Scan(&authorId)
+	if err == sql.ErrNoRows {
+		return BadRequestError{"no such snippet"}
+	} else if err != nil {
+		return err
+	}
+
+	if !(user.Role == server.ROLE_ADMIN || authorId == user.Id) {
+		return BadRequestError{"not an author of the comment"}
+	}
+
+	_, err = h.db.ExecContext(ctx, "DELETE FROM snippets WHERE id = ?", id[:])
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func fmtSnippetFilename(id uuid.UUID) string {

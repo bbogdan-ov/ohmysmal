@@ -8,7 +8,6 @@ import (
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
@@ -79,13 +78,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	ok := true
 
 	// Parse snippet id from the URL.
-	idStr := r.URL.Query().Get("id")
-	if idStr == "" {
-		// No id, just redirect.
-		Redirect(w, "/")
-		return
-	}
-	snippetId, err := uuid.Parse(idStr)
+	snippetId, err := UUIDQueryGet(r, "id")
 	if err != nil {
 		// Invalid id, just redirect.
 		Redirect(w, "/")
@@ -191,9 +184,34 @@ func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
 			Error(w, err)
 			return
 		}
+	case "DELETE":
+		h.handleDeleteApiSnippet(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (h Handler) handleDeleteApiSnippet(w http.ResponseWriter, r *http.Request) {
+	id, err := UUIDQueryGet(r, "id")
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	session := h.DefaultSession(r)
+	user, authed := h.authorizedUser(session)
+	if !authed {
+		Error(w, ErrUserNotAuth)
+		return
+	}
+
+	err = h.deleteSnippet(r, user, id)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	Redirect(w, "/")
 }
 
 func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
@@ -217,12 +235,18 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 // --------------------
 
 func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
-	if !EnsureMethod(w, r, "POST") {
-		return
+	switch r.Method {
+	case "POST":
+		h.handlePostApiComment(w, r)
+	case "DELETE":
+		h.handleDeleteApiComment(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
 
-	// Parse path params.
-	snippetId, err := UUIDPathValue(r, "snippet_id")
+func (h Handler) handlePostApiComment(w http.ResponseWriter, r *http.Request) {
+	snippetId, err := UUIDPathValue(r, "id")
 	if err != nil {
 		Error(w, err)
 		return
@@ -257,3 +281,38 @@ func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
 	v.ServeHTTP(w, r)
 }
 
+func (h Handler) handleDeleteApiComment(w http.ResponseWriter, r *http.Request) {
+	commentId, err := UintPathValue(r, "id")
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	session := h.DefaultSession(r)
+	user, authed := h.authorizedUser(session)
+	if !authed {
+		Error(w, ErrUserNotAuth)
+		return
+	}
+
+	comment, err := h.deleteComment(r, user, commentId)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	// Request snippet comments.
+	comments := make([]server.Comment, 0)
+	err = server.RequestSnippetComments(h.db, comment.SnippetId, &comments)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	v := templ.Handler(view.SnippetComments(
+		comment.SnippetId,
+		server.MaybeUser{User: user, Ok: true},
+		comments,
+	))
+	v.ServeHTTP(w, r)
+}

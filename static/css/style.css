@@ -103,6 +103,13 @@ body {
 
 	border: 1px solid var(--text-color);
 	border-radius: 2px;
+
+	.snippet-info {
+		opacity: 0.6;
+	}
+	.icon {
+		margin-left: -4px;
+	}
 }
 
 /* -------------------- */
@@ -214,10 +221,6 @@ body {
 	.icon {
 		translate: 0 2px;
 	}
-}
-.stats {
-	font-family: monospace;
-	font-size: .8rem;
 }
 
 .publish-modal {
@@ -774,14 +777,16 @@ button.link-ish {
 
 	animation: icon infinite step-end 1s;
 
-	&.icon-logout  { --icon-index: 0; }
-	&.icon-home    { --icon-index: 1; }
-	&.icon-flower  { --icon-index: 2; }
-	&.icon-plane   { --icon-index: 3; }
-	&.icon-eye     { --icon-index: 4; }
-	&.icon-comment { --icon-index: 5; }
-	&.icon-trash   { --icon-index: 6; margin-inline: -6px; }
-	&.icon-editor  { --icon-index: 7; }
+	&.icon-logout      { --icon-index: 0; }
+	&.icon-home        { --icon-index: 1; }
+	&.icon-flower      { --icon-index: 2; }
+	&.icon-plane       { --icon-index: 3; }
+	&.icon-eye         { --icon-index: 4; }
+	&.icon-comment     { --icon-index: 5; }
+	&.icon-trash       { --icon-index: 6; margin-inline: -6px; }
+	&.icon-editor      { --icon-index: 7; }
+	&.icon-lil-flower  { --icon-index: 8; }
+	&.icon-lil-comment { --icon-index: 9; }
 
 	background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0;
 }

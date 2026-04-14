@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/sessions"
 
 	"ohmysmal/view"
+	"ohmysmal/server"
 )
 
 const (
@@ -19,32 +20,54 @@ const (
 	USER_ID_SESSION_KEY = "id"
 )
 
-var (
-	ErrUserAlreadyAuth = BadRequestError{"user is already authorized"}
-	ErrUserNotAuth     = BadRequestError{"user is not authorized"}
-	ErrNicknameInvalid = BadRequestError{"nickname is invalid"}
-	ErrNicknameTooLong = BadRequestError{"nickname is too long"}
-)
+func (h Handler) authorizedUserId(session *sessions.Session) (id uint, found bool) {
+	value := session.Values[USER_ID_SESSION_KEY]
+	if value == nil {
+		return 0, false
+	}
 
-// NOTE: any other `error` types are "internal server errors".
+	userId, ok := value.(uint)
+	if !ok {
+		log.Printf("USERS: ERROR: User ID in the session is not an `uint`")
+		delete(session.Values, USER_ID_SESSION_KEY)
+		return 0, false
+	}
 
-// This error returns whenever a user did something wrong, for example tried to
-// log in with an incorrect nickname or password.
-type UserError struct {
-	Message string
+	return userId, true
 }
 
-func (e UserError) Error() string {
-	return e.Message
+func (h Handler) authorizedUserOrFalse(session *sessions.Session) (user server.User, found bool) {
+	id, found := h.authorizedUserId(session)
+	if !found {
+		return server.User{}, false
+	}
+
+	value, _ := h.cache.Get(fmtUserCacheKey(id))
+	if value == nil {
+		return server.User{}, false
+	}
+
+	user, found = value.(server.User)
+	return user, found
 }
 
-// An invalid request was received.
-type BadRequestError struct {
-	Message string
+// Returns the authorized user. The info is stored in the cache,
+// it may be outdated but that's fine i guess.
+func (h Handler) authorizedUser(session *sessions.Session) (user server.User, err error) {
+	user, found := h.authorizedUserOrFalse(session)
+	if found {
+		return user, nil
+	} else {
+		return server.User{}, server.BadRequestError{"user is not authorized"}
+	}
 }
 
-func (e BadRequestError) Error() string {
-	return e.Message
+func rememberUser(w http.ResponseWriter, r *http.Request, session *sessions.Session, id uint) {
+	session.Values[USER_ID_SESSION_KEY] = id
+	err := session.Save(r, w)
+	if err != nil {
+		log.Printf("USERS: ERROR: Failed to save the session: %s", err)
+	}
 }
 
 func (h Handler) DefaultSession(r *http.Request) *sessions.Session {
@@ -60,12 +83,12 @@ func (h Handler) DefaultSession(r *http.Request) *sessions.Session {
 func UintPathValue(r *http.Request, name string) (uint, error) {
 	str := r.PathValue(name)
 	if str == "" {
-		return 0, BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
+		return 0, server.BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
 	}
 
 	num, err := strconv.ParseUint(str, 10, 32)
 	if err != nil {
-		return 0, BadRequestError{fmt.Sprintf(`path value "%s" is not a 'uint': %s`, name, err)}
+		return 0, server.BadRequestError{fmt.Sprintf(`path value "%s" is not a 'uint': %s`, name, err)}
 	}
 
 	return uint(num), nil
@@ -75,13 +98,13 @@ func UintPathValue(r *http.Request, name string) (uint, error) {
 func UUIDPathValue(r *http.Request, name string) (uuid.UUID, error) {
 	str := r.PathValue(name)
 	if str == "" {
-		return uuid.UUID{}, BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
+		return uuid.UUID{}, server.BadRequestError{fmt.Sprintf(`no "%s" path value is provided in the URL`, name)}
 	}
 
 	id, err := uuid.Parse(str)
 	if err != nil {
 		msg := fmt.Sprintf(`path value "%s" is an invalid UUID: %s`, name, err)
-		return uuid.UUID{}, BadRequestError{msg}
+		return uuid.UUID{}, server.BadRequestError{msg}
 	}
 
 	return id, nil
@@ -91,13 +114,13 @@ func UUIDQueryGet(r *http.Request, name string) (uuid.UUID, error) {
 	str := r.URL.Query().Get(name)
 	if str == "" {
 		msg := fmt.Sprintf(`no "%s" query param is provided in the URL`, name)
-		return uuid.UUID{}, BadRequestError{msg}
+		return uuid.UUID{}, server.BadRequestError{msg}
 	}
 
 	id, err := uuid.Parse(str)
 	if err != nil {
 		msg := fmt.Sprintf(`query param "%s" is an invalid UUID: %s`, name, err)
-		return uuid.UUID{}, BadRequestError{msg}
+		return uuid.UUID{}, server.BadRequestError{msg}
 	}
 
 	return id, nil
@@ -115,10 +138,7 @@ func EnsureMethod(w http.ResponseWriter, r *http.Request, method string) bool {
 
 // Write an error message into the response body.
 func Error(w http.ResponseWriter, err error) {
-	if errors.As(err, &UserError{}) {
-		// Making errors is ok, don't worry <3
-		http.Error(w, err.Error(), http.StatusOK)
-	} else if errors.As(err, &BadRequestError{}) {
+	if errors.As(err, &server.BadRequestError{}) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
 		log.Printf("ERROR: Server error: %s", err)
@@ -129,10 +149,10 @@ func Error(w http.ResponseWriter, err error) {
 // Write an error page on server error, otherwise write an error message into
 // the response body.
 func ErrorPage(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.As(err, &UserError{}) {
+	if errors.As(err, &server.BadRequestError{}) {
 		// Making errors is ok, don't worry <3
 		http.Error(w, err.Error(), http.StatusOK)
-	} else if errors.As(err, &BadRequestError{}) {
+	} else if errors.As(err, &server.BadRequestError{}) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
 		log.Printf("ERROR: Server error, writing an error page: %s", err)

@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"ohmysmal/server"
-	"reflect"
 	"strings"
 	"time"
+	"database/sql"
 
 	"github.com/gorilla/sessions"
+
+	"ohmysmal/server"
 )
 
 // Caches the authorized user info on each request to reduce number of requests to the database.
@@ -59,20 +60,14 @@ func methodUpdatesCache(method string) bool {
 // Updates the currently authorized user cache. Cache will be updated even if
 // it is already present or it is not expired yet.
 func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session *sessions.Session) (err error) {
-	userId, _ := session.Values[USER_ID_SESSION_KEY]
-	if userId == nil {
-		log.Printf("CACHE: WARNING: User is not authorized, nothing to update")
-		return ErrUserNotAuth
-	}
-
-	id, ok := userId.(uint)
-	if !ok {
-		log.Printf("CACHE: ERROR: User id in the session has an invalid type (%s)", reflect.TypeOf(userId))
-		return ErrUserNotAuth
+	id, found := h.authorizedUserId(session)
+	if !found {
+		// User is not authorized, do nothing.
+		return nil
 	}
 
 	err = h.requestAndCacheUser(r, id)
-	if err == server.ErrUserNotFound {
+	if err == sql.ErrNoRows {
 		log.Printf("CACHE: WARNING: Authorized user was not found in the database when trying to update cache, destroying user's session")
 
 		delete(session.Values, USER_ID_SESSION_KEY)

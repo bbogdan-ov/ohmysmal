@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
@@ -13,6 +15,7 @@ import (
 
 	"ohmysmal/server"
 	"ohmysmal/view"
+	"ohmysmal/consts"
 )
 
 type Handler struct {
@@ -39,17 +42,17 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session := h.DefaultSession(r)
-	user, ok := h.authorizedUser(session)
+	user, authed := h.authorizedUserOrFalse(session)
 
 	snippets := make([]server.Snippet, 0, 20)
-	err := server.RequestSnippets(h.db, &snippets, user.Id, ok)
+	err := server.RequestSnippets(h.db, &snippets, user.Id, authed)
 	if err != nil {
 		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
 		ErrorPage(w, r, err)
 		return
 	}
 
-	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: ok}, snippets))
+	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets))
 	v.ServeHTTP(w, r)
 }
 
@@ -59,9 +62,9 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session := h.DefaultSession(r)
-	user, ok := h.authorizedUser(session)
+	user, authed := h.authorizedUserOrFalse(session)
 
-	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: ok}))
+	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: authed}))
 	v.ServeHTTP(w, r)
 }
 
@@ -71,7 +74,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session := h.DefaultSession(r)
-	user, authed := h.authorizedUser(session)
+	user, authed := h.authorizedUserOrFalse(session)
 
 	var snippet server.Snippet
 	var comments []server.Comment
@@ -131,30 +134,118 @@ func (h Handler) HandleApiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.login(w, r)
-	if err == ErrUserAlreadyAuth {
-		// fallthough
-	} else if err != nil {
+	if err != nil {
 		Error(w, err)
 		return
 	}
 
 	Redirect(w, "/")
 }
+
+func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
+	ErrInvalid := server.BadRequestError{"Invalid nickname or password."}
+
+	session := h.DefaultSession(r)
+
+	_, authed := h.authorizedUserOrFalse(session)
+	if authed {
+		return server.BadRequestError{"user already authorized"}
+	}
+
+	// Parse received form data.
+	err = r.ParseForm()
+	if err != nil {
+		return server.BadRequestError{err.Error()}
+	}
+
+	nickname := strings.TrimSpace(r.FormValue("nickname"))
+	password := r.FormValue("password")
+
+	if nickname == "" {
+		return server.BadRequestError{"Nickname is required."}
+	} else if password == "" {
+		return server.BadRequestError{"Password is required."}
+	} else if server.ValidateNickname(nickname) != nil || server.ValidatePassword(password) != nil {
+		return ErrInvalid
+	}
+
+	// Request a user with the received nickname.
+	user, err := server.RequestUserByNickname(r, h.db, nickname)
+	if err == sql.ErrNoRows {
+		return ErrInvalid
+	} else if err != nil {
+		log.Printf("USERS: ERROR: Login failed: Failed to request an existing user: %s", err)
+		return err
+	}
+
+	// Compare the passwords.
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		// Passwords aren't equal.
+		return ErrInvalid
+	}
+
+	rememberUser(w, r, session, user.Id)
+
+	log.Printf("USERS: INFO: User successfully logged in: %d, %s", user.Id, user.Nickname)
+	return nil
+}
+
 func (h Handler) HandleApiRegister(w http.ResponseWriter, r *http.Request) {
 	if !EnsureMethod(w, r, "POST") {
 		return
 	}
 
 	err := h.register(w, r)
-	if err == ErrUserAlreadyAuth {
-		// fallthough
-	} else if err != nil {
+	if err != nil {
 		Error(w, err)
 		return
 	}
 
 	Redirect(w, "/")
 }
+
+func (h Handler) register(w http.ResponseWriter, r *http.Request) (err error) {
+	session := h.DefaultSession(r)
+
+	_, authed := h.authorizedUserOrFalse(session)
+	if authed {
+		return server.BadRequestError{"user already authorized"}
+	}
+
+	// Parse received form data.
+	err = r.ParseForm()
+	if err != nil {
+		return server.BadRequestError{err.Error()}
+	}
+
+	nickname := strings.TrimSpace(r.FormValue("nickname"))
+	password := r.FormValue("password")
+	passwordConfirm := r.FormValue("password-confirm")
+
+	if nickname == "" {
+		return server.BadRequestError{"Nickname is required."}
+	} else if password == "" {
+		return server.BadRequestError{"Password is required."}
+	} else if passwordConfirm == "" {
+		return server.BadRequestError{"Confirm the password."}
+	}
+
+	if password != passwordConfirm {
+		return server.BadRequestError{"Passwords do not match."}
+	}
+
+	id, err := server.InsertUser(h.db, r.Context(), nickname, password)
+	if err != nil {
+		return err
+	}
+
+	rememberUser(w, r, session, id)
+
+	log.Printf("USERS: INFO: User successfully registered: %d, %s", id, nickname)
+	return nil
+}
+
 func (h Handler) HandleApiLogout(w http.ResponseWriter, r *http.Request) {
 	if !EnsureMethod(w, r, "POST") {
 		return
@@ -164,54 +255,104 @@ func (h Handler) HandleApiLogout(w http.ResponseWriter, r *http.Request) {
 	Redirect(w, "/")
 }
 
+func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
+	session := h.DefaultSession(r)
+
+	userId, found := h.authorizedUserId(session)
+	if found {
+		log.Printf("USERS: INFO: User logged out: %d", userId)
+		_ = h.cache.Delete(fmtUserCacheKey(userId)) // ignore if not found
+	}
+
+	delete(session.Values, USER_ID_SESSION_KEY)
+	_ = session.Save(r, w)
+}
+
 // --------------------
 // Snippets API.
 // --------------------
 
 func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
+	var err error
 	switch r.Method {
 	case "POST":
-		id, err := h.postSnippet(r)
-		if err != nil {
-			Error(w, err)
-			return
-		}
-
-		w.Write([]byte(fmt.Sprintf("%s", id)))
+		err = h.handlePostApiSnippet(w, r)
 	case "GET":
-		err := h.snippetSource(w, r)
-		if err != nil {
-			Error(w, err)
-			return
-		}
+		err = h.handleGetApiSnippet(w, r)
 	case "DELETE":
-		h.handleDeleteApiSnippet(w, r)
+		err = h.handleDeleteApiSnippet(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
 
-func (h Handler) handleDeleteApiSnippet(w http.ResponseWriter, r *http.Request) {
-	id, err := UUIDQueryGet(r, "id")
 	if err != nil {
 		Error(w, err)
-		return
+	}
+}
+
+func (h Handler) handlePostApiSnippet(w http.ResponseWriter, r *http.Request) error {
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
+	}
+
+	// Parse form data.
+	err = r.ParseMultipartForm(consts.MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
+	if err != nil {
+		return server.BadRequestError{err.Error()}
+	}
+
+	title := r.FormValue("title")
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return err
+	}
+
+	id, err := server.PostSnippet(h.db, r.Context(), user, title, file, header)
+	if err != nil {
+		return err
+	}
+
+	w.Write([]byte(fmt.Sprintf("%s", id)))
+	return nil
+}
+
+func (h Handler) handleGetApiSnippet(w http.ResponseWriter, r *http.Request) error {
+	id, err := UUIDQueryGet(r, "id")
+	if err != nil {
+		return err
+	}
+
+	source, err := server.SnippetSource(h.db, r.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	w.Write([]byte(source))
+	return nil
+}
+
+func (h Handler) handleDeleteApiSnippet(w http.ResponseWriter, r *http.Request) error {
+	id, err := UUIDQueryGet(r, "id")
+	if err != nil {
+		return err
 	}
 
 	session := h.DefaultSession(r)
-	user, authed := h.authorizedUser(session)
-	if !authed {
-		Error(w, ErrUserNotAuth)
-		return
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
 	}
 
-	err = h.deleteSnippet(r, user, id)
+	err = server.DeleteSnippet(h.db, r.Context(), user, id)
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	Redirect(w, "/")
+	return nil
 }
 
 func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
@@ -219,7 +360,20 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snippetId, count, flowered, err := h.flowerSnippet(r)
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	snippetId, err := UUIDPathValue(r, "snippet_id")
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	count, flowered, err := server.FlowerSnippet(h.db, r.Context(), user, snippetId)
 	if err != nil {
 		Error(w, err)
 		return
@@ -235,42 +389,45 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 // --------------------
 
 func (h Handler) HandleApiComment(w http.ResponseWriter, r *http.Request) {
+	var err error
 	switch r.Method {
 	case "POST":
-		h.handlePostApiComment(w, r)
+		err = h.handlePostApiComment(w, r)
 	case "DELETE":
-		h.handleDeleteApiComment(w, r)
+		err = h.handleDeleteApiComment(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+
+	if err != nil {
+		Error(w, err)
+	}
 }
 
-func (h Handler) handlePostApiComment(w http.ResponseWriter, r *http.Request) {
+func (h Handler) handlePostApiComment(w http.ResponseWriter, r *http.Request) error {
 	snippetId, err := UUIDPathValue(r, "id")
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
+
+	text := r.FormValue("text")
 
 	session := h.DefaultSession(r)
-	user, authed := h.authorizedUser(session)
-	if !authed {
-		Error(w, ErrUserNotAuth)
-		return
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
 	}
 
-	err = h.postComment(r, user, snippetId)
+	err = server.PostComment(h.db, r.Context(), user, snippetId, text)
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	// Request snippet comments.
 	comments := make([]server.Comment, 0)
 	err = server.RequestSnippetComments(h.db, snippetId, &comments)
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	v := templ.Handler(view.SnippetComments(
@@ -279,34 +436,32 @@ func (h Handler) handlePostApiComment(w http.ResponseWriter, r *http.Request) {
 		comments,
 	))
 	v.ServeHTTP(w, r)
+
+	return nil
 }
 
-func (h Handler) handleDeleteApiComment(w http.ResponseWriter, r *http.Request) {
+func (h Handler) handleDeleteApiComment(w http.ResponseWriter, r *http.Request) error {
 	commentId, err := UintPathValue(r, "id")
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	session := h.DefaultSession(r)
-	user, authed := h.authorizedUser(session)
-	if !authed {
-		Error(w, ErrUserNotAuth)
-		return
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
 	}
 
-	comment, err := h.deleteComment(r, user, commentId)
+	comment, err := server.DeleteComment(h.db, r.Context(), user, commentId)
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	// Request snippet comments.
 	comments := make([]server.Comment, 0)
 	err = server.RequestSnippetComments(h.db, comment.SnippetId, &comments)
 	if err != nil {
-		Error(w, err)
-		return
+		return err
 	}
 
 	v := templ.Handler(view.SnippetComments(
@@ -315,4 +470,6 @@ func (h Handler) handleDeleteApiComment(w http.ResponseWriter, r *http.Request) 
 		comments,
 	))
 	v.ServeHTTP(w, r)
+
+	return nil
 }

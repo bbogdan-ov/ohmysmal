@@ -16,19 +16,23 @@ function openAuthForms(toggle = false) {
 	});
 }
 
+function setErrorPopup(status, msg) {
+	const popup = document.getElementById("error-popup");
+	const popupText = document.getElementById("error-popup-text");
+	popup.classList.add("active");
+	popupText.textContent = `${status}: ${msg}`;
+
+	clearTimeout(timeout);
+	timeout = setTimeout(() => {
+		popup.classList.remove("active");
+	}, 6000);
+}
+
 document.body.addEventListener("htmx:afterRequest", e => {
 	if (e.detail.successful) return;
 
 	const status = e.detail.xhr.status;
 	if (300 <= status && status < 400) return;
 
-	const popup = document.getElementById("error-popup");
-	const popupText = document.getElementById("error-popup-text");
-	popup.classList.add("active");
-	popupText.textContent = `${status}: ${e.detail.xhr.response}`;
-
-	clearTimeout(timeout);
-	timeout = setTimeout(() => {
-		popup.classList.remove("active");
-	}, 6000);
+	setErrorPopup(status, e.detail.xhr.response);
 })

@@ -273,6 +273,8 @@ function initPublishForm(editor) {
 	async function onSubmit(e) {
 		e.preventDefault();
 
+		form.classList.add("htmx-request");
+
 		const blob = new Blob([editor.getValue()], {
 			type: "text/plain; charset=utf-8"
 		});
@@ -285,12 +287,15 @@ function initPublishForm(editor) {
 			body: data,
 		});
 		const text = await res.text();
+
+		form.classList.remove("htmx-request");
+
 		if (!res.ok) {
-			// TODO: show a proper message to the user.
-			console.error("Failed to post the snippet.");
-			console.error(text);
+			setErrorPopup(res.status, text);
+			console.error("Failed to post the snippet!");
 			return;
 		}
+
 		window.location.replace(`/snippet?id=${text}`);
 	}
 

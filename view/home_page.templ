@@ -6,7 +6,7 @@ import (
 	"ohmysmal/server"
 )
 
-templ HomePage(user server.MaybeUser, snippets []server.Snippet) {
+templ HomePage(user server.MaybeUser, snippets []server.Snippet, splash string) {
 	@page() {
 		@pageHead("home")
 		@pageBody() {
@@ -14,7 +14,7 @@ templ HomePage(user server.MaybeUser, snippets []server.Snippet) {
 				@header(user)
 
 				<div class="welcome-logo"></div>
-				<i class="text-center text-yellow">— Feel UXN inside yourself. —</i>
+				<i class="text-center text-yellow">— {splash} —</i>
 
 				@feed(snippets)
 

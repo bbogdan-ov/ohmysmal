@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"math/rand"
 	"strings"
 	"golang.org/x/crypto/bcrypt"
 
@@ -52,7 +53,19 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets))
+	// Bunch of harassment messages.
+	splashes := []string{
+		"Feel UXN inside yourself",
+		"Become UXN, feel UXN, love UXN",
+		"UXN people",
+		"UXN cures your diseases",
+		"UXN, you can see it coming",
+		"Ok UXN",
+		"Yes, it's here, UXN",
+	}
+	splash := splashes[rand.Int() % len(splashes)]
+
+	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets, splash))
 	v.ServeHTTP(w, r)
 }
 

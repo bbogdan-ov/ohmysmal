@@ -21,7 +21,7 @@ function setErrorPopup(status, msg) {
 	const popupText = document.getElementById("error-popup-text");
 	popup.classList.add("active");
 
-	if (400 <= status && status < 500) {
+	if (400 <= status && status < 500 || status <= 0) {
 		popupText.textContent = `${msg}`;
 	} else if (500 <= status && status < 600) {
 		popupText.textContent = `Server error: ${msg}`;

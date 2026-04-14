@@ -127,6 +127,9 @@ body {
 	grid-template-columns: 2fr 1fr;
 	overflow: hidden;
 }
+body:has(.editor-page) .container {
+	max-width: unset !important;
+}
 .editor-container {
 	height: 100%;
 

@@ -70,9 +70,14 @@ alias enum byte Datetime {
 	isdst  { 0xca }
 }`;
 
-let changed = false;
-
 async function init() {
+	let changed = false;
+	let errorsCount = 0;
+	let startTime = 0;
+	let prevZoom = 0;
+
+	let wantsToPublish = false;
+
 	// Init the UXN VARVARA emulator.
 	const emu = new Emu();
 	emu.init();
@@ -113,22 +118,26 @@ async function init() {
 	}
 	function addProblem(line, col, msg) {
 		addMessage(`${line+1}:${col+1}: error: ${msg}`, "error");
+
+		if (errorsCount == 0) {
+			onError();
+		}
+
+		errorsCount += 1;
+		wantsToPublish = false;
 	}
 	function addNote(line, col, msg) {
 		addMessage(`${line+1}:${col+1}: note: ${msg}`, "note");
 	}
 
-	let startTime = 0;
-	let prevZoom = emu;
-
 	function recompile(focus=false) {
-		prevZoom = emu.screen.zoom;
-
 		problems.innerHTML = "";
 
+		prevZoom = emu.screen.zoom;
+		errorsCount = 0;
 		startTime = Date.now();
-		addMessage("Compiling...")
 
+		addMessage("Compiling...")
 		compile(editor.doc.getValue());
 		if (focus) win.focus();
 	}
@@ -137,6 +146,8 @@ async function init() {
 		addMessage(`Compiled ${program.length} bytes in ${elapsed}ms!`);
 		emu.load(program);
 		emu.screen.set_zoom(prevZoom);
+
+		onCompiledSuccessfully();
 	}
 
 	// Init the UXNSMAL compiler.
@@ -179,6 +190,88 @@ async function init() {
 			}
 		})
 	}
+
+	function onCompiledSuccessfully() {
+		console.log("Compiled successfully");
+
+		if (wantsToPublish)
+			publish();
+	}
+	function onError() {
+		if (wantsToPublish)
+			setErrorPopup(0, "You have compilation errors! Fix them before publishing!");
+	}
+
+	async function publish() {
+		const form = document.getElementById("editor-publish-form");
+		if (!form) return;
+
+		form.classList.add("htmx-request");
+
+		const data = new FormData(form);
+		formAppendSource(data, editor)
+
+		const res = await fetch("/api/snippet", {
+			method: "POST",
+			body: data,
+		});
+		const text = await res.text();
+
+		form.classList.remove("htmx-request");
+
+		if (!res.ok) {
+			setErrorPopup(res.status, text);
+			return;
+		}
+
+		changed = false;
+		window.location.replace(`/snippet?id=${text}`);
+	}
+
+	function initPublishForm(editor) {
+		const form = document.getElementById("editor-publish-form");
+		if (!form) return;
+
+		async function onSubmit(e) {
+			e.preventDefault();
+
+			wantsToPublish = true;
+			recompile()
+		}
+
+		form.addEventListener("submit", onSubmit);
+	}
+
+	function initUploadButton(editor) {
+		const uploadButton = document.getElementById("upload-button");
+		if (!uploadButton) return;
+
+		const params = new URLSearchParams(new URL(window.location.href).search);
+		const snippetId = params.get("snippet");
+		if (!snippetId) {
+			console.warn(`No "snippet" url param was provided.`);
+			return;
+		}
+
+		async function uploadChanges() {
+			const data = new FormData();
+			formAppendSource(data, editor)
+
+			const res = await fetch(`/api/snippet?id=${snippetId}`, {
+				method: "PATCH",
+				body: data,
+			});
+			const text = await res.text();
+			if (!res.ok) {
+				setErrorPopup(res.status, text);
+				return;
+			}
+
+			window.location.replace(`/snippet?id=${snippetId}`);
+		}
+
+		uploadButton.addEventListener("click", uploadChanges);
+}
 }
 
 function initDisplayWindow(emu, editor) {
@@ -268,69 +361,6 @@ function formAppendSource(formData, editor) {
 	});
 
 	formData.append("file", blob, "source.smal");
-}
-
-function initPublishForm(editor) {
-	const form = document.getElementById("editor-publish-form");
-	if (!form) return;
-
-	async function onSubmit(e) {
-		e.preventDefault();
-
-		form.classList.add("htmx-request");
-
-		const data = new FormData(form);
-		formAppendSource(data, editor)
-
-		const res = await fetch("/api/snippet", {
-			method: "POST",
-			body: data,
-		});
-		const text = await res.text();
-
-		form.classList.remove("htmx-request");
-
-		if (!res.ok) {
-			setErrorPopup(res.status, text);
-			return;
-		}
-
-		changed = false;
-		window.location.replace(`/snippet?id=${text}`);
-	}
-
-	form.addEventListener("submit", onSubmit);
-}
-
-function initUploadButton(editor) {
-	const uploadButton = document.getElementById("upload-button");
-	if (!uploadButton) return;
-
-	const params = new URLSearchParams(new URL(window.location.href).search);
-	const snippetId = params.get("snippet");
-	if (!snippetId) {
-		console.warn(`No "snippet" url param was provided.`);
-		return;
-	}
-
-	async function uploadChanges() {
-		const data = new FormData();
-		formAppendSource(data, editor)
-
-		const res = await fetch(`/api/snippet?id=${snippetId}`, {
-			method: "PATCH",
-			body: data,
-		});
-		const text = await res.text();
-		if (!res.ok) {
-			setErrorPopup(res.status, text);
-			return;
-		}
-
-		window.location.replace(`/snippet?id=${snippetId}`);
-	}
-
-	uploadButton.addEventListener("click", uploadChanges);
 }
 
 function setLoadingText(text) {

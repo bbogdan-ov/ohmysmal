@@ -118,8 +118,11 @@ async function init() {
 	}
 
 	let startTime = 0;
+	let prevZoom = emu;
 
 	function recompile(focus=false) {
+		prevZoom = emu.screen.zoom;
+
 		problems.innerHTML = "";
 
 		startTime = Date.now();
@@ -132,6 +135,7 @@ async function init() {
 		const elapsed = Date.now() - startTime;
 		addMessage(`Compiled ${program.length} bytes in ${elapsed}ms!`);
 		emu.load(program);
+		emu.screen.set_zoom(prevZoom);
 	}
 
 	// Init the UXNSMAL compiler.

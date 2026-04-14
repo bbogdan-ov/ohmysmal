@@ -64,19 +64,24 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUserOrFalse(session)
 
+	var snippet server.Snippet
 	var source string
 	var err error
 
-	snippetId, hasId := UUIDQueryGetOrFalse(r, "snippet")
-	if hasId {
-		source, err = server.SnippetSource(h.db, r.Context(), snippetId)
+	snippetId, hasSnippet := UUIDQueryGetOrFalse(r, "snippet")
+	if hasSnippet {
+		snippet, source, err = server.SnippetSource(h.db, r.Context(), snippetId)
 		if err != nil {
 			ErrorPage(w, r, err)
 			return
 		}
 	}
 
-	v := templ.Handler(view.EditorPage(server.MaybeUser{User: user, Ok: authed}, source))
+	v := templ.Handler(view.EditorPage(
+		server.MaybeUser{User: user, Ok: authed},
+		server.MaybeSnippet{Snippet: snippet, Ok: hasSnippet},
+		source,
+	))
 	v.ServeHTTP(w, r)
 }
 
@@ -101,7 +106,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Request the snippet.
-	snippet, err = server.RequestSnippet(r, h.db, snippetId, user.Id, authed)
+	snippet, err = server.RequestSnippet(h.db, r.Context(), snippetId, user.Id, authed)
 	if err == sql.ErrNoRows {
 		ok = false
 	} else if err != nil {
@@ -293,6 +298,8 @@ func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
 		err = h.handleGetApiSnippet(w, r)
 	case "DELETE":
 		err = h.handleDeleteApiSnippet(w, r)
+	case "PATCH":
+		err = h.handlePatchApiSnippet(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -337,7 +344,7 @@ func (h Handler) handleGetApiSnippet(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 
-	source, err := server.SnippetSource(h.db, r.Context(), id)
+	_, source, err := server.SnippetSource(h.db, r.Context(), id)
 	if err != nil {
 		return err
 	}
@@ -364,6 +371,37 @@ func (h Handler) handleDeleteApiSnippet(w http.ResponseWriter, r *http.Request) 
 	}
 
 	Redirect(w, "/")
+	return nil
+}
+
+func (h Handler) handlePatchApiSnippet(w http.ResponseWriter, r *http.Request) error {
+	id, err := UUIDQueryGet(r, "id")
+	if err != nil {
+		return err
+	}
+
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
+	}
+
+	// Parse form data.
+	err = r.ParseMultipartForm(consts.MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
+	if err != nil {
+		return server.BadRequestError{err.Error()}
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return err
+	}
+
+	err = server.UpdateSnippetSource(h.db, r.Context(), user, id, file, header)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

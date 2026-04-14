@@ -1,5 +1,4 @@
 import { initCompiler } from "./compiler.js";
-import { fetchSnippetSource } from "./snippet.js";
 import { editorConfig } from "./editor.js";
 
 const DEFAULT_CODE = `\
@@ -143,6 +142,7 @@ async function init() {
 	recompile();
 
 	initPublishForm(editor);
+	initUploadButton(editor);
 
 	editor.setOption("extraKeys", {
 		"Ctrl-Enter": recompile.bind(true),
@@ -256,6 +256,15 @@ function initDisplayWindow(emu, editor) {
 	return win;
 }
 
+function formAppendSource(formData, editor) {
+	const value = editor.getValue().trim();
+	const blob = new Blob([value], {
+		type: "text/plain; charset=utf-8"
+	});
+
+	formData.append("file", blob, "source.smal");
+}
+
 function initPublishForm(editor) {
 	const form = document.getElementById("editor-publish-form");
 	if (!form) return;
@@ -265,12 +274,8 @@ function initPublishForm(editor) {
 
 		form.classList.add("htmx-request");
 
-		const blob = new Blob([editor.getValue().trim()], {
-			type: "text/plain; charset=utf-8"
-		});
-
-		const data = new FormData(form);
-		data.append("file", blob, "source.smal");
+		const data = new FormData();
+		formAppendSource(data, editor)
 
 		const res = await fetch("/api/snippet", {
 			method: "POST",
@@ -289,6 +294,37 @@ function initPublishForm(editor) {
 	}
 
 	form.addEventListener("submit", onSubmit);
+}
+
+function initUploadButton(editor) {
+	const uploadButton = document.getElementById("upload-button");
+	if (!uploadButton) return;
+
+	const params = new URLSearchParams(new URL(window.location.href).search);
+	const snippetId = params.get("snippet");
+	if (!snippetId) {
+		console.warn(`No "snippet" url param was provided.`);
+		return;
+	}
+
+	async function uploadChanges() {
+		const data = new FormData();
+		formAppendSource(data, editor)
+
+		const res = await fetch(`/api/snippet?id=${snippetId}`, {
+			method: "PATCH",
+			body: data,
+		});
+		const text = await res.text();
+		if (!res.ok) {
+			setErrorPopup(res.status, text);
+			return;
+		}
+
+		window.location.replace(`/snippet?id=${snippetId}`);
+	}
+
+	uploadButton.addEventListener("click", uploadChanges);
 }
 
 function setLoadingText(text) {

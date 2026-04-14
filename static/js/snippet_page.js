@@ -35,7 +35,10 @@ async function init() {
 	console.log("TODO: done loading");
 
 	// Init the text editor.
-	const editor = editorConfig(document.getElementById("editor-wrapper"), "// Loading...", true);
+	const editor = CodeMirror(
+		document.getElementById("editor-wrapper"),
+		editorConfig("// Loading...", true),
+	);
 
 	const params = new URLSearchParams(new URL(window.location.href).search);
 	const snippetId = params.get("id");

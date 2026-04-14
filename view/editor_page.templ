@@ -5,7 +5,7 @@ import (
 	"ohmysmal/consts"
 )
 
-templ EditorPage(user server.MaybeUser, snippetSource string) {
+templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSource string) {
 	@page() {
 		@pageHead("editor") {
 			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
@@ -17,7 +17,7 @@ templ EditorPage(user server.MaybeUser, snippetSource string) {
 				<div class="editor-container">
 					<textarea id="snippet-source">{snippetSource}</textarea>
 
-					@editorStatusbar(user)
+					@editorStatusbar(user, snippet)
 				</div>
 
 				<div class="editor-sidebar">
@@ -61,12 +61,14 @@ templ EditorPage(user server.MaybeUser, snippetSource string) {
 	}
 }
 
-templ editorStatusbar(user server.MaybeUser) {
+templ editorStatusbar(user server.MaybeUser, snippet server.MaybeSnippet) {
 	<div class="statusbar">
 		<div class="row gap-2">
 			<a href="/" class="link-ish">@icon("home") home</a>
 			<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
-			if user.Ok {
+			if user.Ok && snippet.Ok {
+				<span id="upload-button" class="link-ish" >upload changes</span>
+			} else if user.Ok {
 				<span id="publish-button" class="link-ish">publish</span>
 			}
 		</div>

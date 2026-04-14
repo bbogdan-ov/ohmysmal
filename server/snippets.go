@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"mime/multipart"
 	"os"
 	"strings"
@@ -90,46 +89,61 @@ func PostSnippet(
 	return id, nil
 }
 
-func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (source string, err error) {
+func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (snippet Snippet, source string, err error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := db.QueryRowContext(ctx, "SELECT id FROM snippets WHERE id = ?", id)
+	row := db.QueryRowContext(ctx, "SELECT * FROM snippets_with_author WHERE id = ?", id[:])
 
-	err = row.Err()
+	err = row.Scan(
+		&snippet.Id,
+		&snippet.AuthorId,
+		&snippet.Title,
+		&snippet.Flowers,
+		&snippet.Comments,
+		&snippet.Status,
+		&snippet.Date,
+		&snippet.RemixOf,
+		&snippet.AuthorNickname,
+	)
 	if err == sql.ErrNoRows {
-		return "", BadRequestError{"no such snippet"}
+		return snippet, "", BadRequestError{"no such snippet"}
 	} else if err != nil {
 		log.Printf("SNIPPETS: ERROR: Failed to fetch snippet source code: %s", err)
-		return "", err
+		return snippet, "", err
 	}
 
 	contents, err := os.ReadFile(fmtSnippetFilename(id))
 	if err != nil {
-		return "", err
+		return snippet, "", err
 	}
 
-	return string(contents), nil
+	return snippet, string(contents), nil
+}
+
+func validateFile(file multipart.File, header *multipart.FileHeader) (contents string, err error) {
+	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
+		msg := fmt.Sprintf("Source file is too large! It should not exceed %d bytes of size, got %d.", consts.MAX_SNIPPET_FILE_SIZE, header.Size)
+		return "", BadRequestError{msg}
+	}
+
+	bytes, err := io.ReadAll(file)
+	contents = strings.TrimSpace(string(bytes))
+	if len(contents) == 0 {
+		return "", BadRequestError{"Source file can't be empty!"}
+	}
+	return contents, err
 }
 
 func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.FileHeader) error {
-	// TODO: check for text file.
-
-	if header.Size == 0 {
-		return BadRequestError{"Source file can't be empty!"}
-	} else if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
-		msg := fmt.Sprintf("Source file is too large! It should not exceed %d bytes of size, got %d.", consts.MAX_SNIPPET_FILE_SIZE, header.Size)
-		return BadRequestError{msg}
-	}
-
-	contents, err := io.ReadAll(file)
+	contents, err := validateFile(file, header)
 	if err != nil {
 		return err
 	}
 
 	const perm = 0o644 // read-write for owner, read-only for other
 
-	err = os.WriteFile(fmtSnippetFilename(id), contents, perm)
+	err = os.WriteFile(fmtSnippetFilename(id), []byte(contents), perm)
 	if err != nil {
 		return err
 	}
@@ -226,6 +240,41 @@ func DeleteSnippet(
 	return nil
 }
 
+func UpdateSnippetSource(
+	db *sql.DB,
+	ctx context.Context,
+	user User,
+	id uuid.UUID,
+	file multipart.File,
+	header *multipart.FileHeader,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Check whether the snippet exists.
+	row := db.QueryRowContext(ctx, "SELECT * FROM snippets WHERE id = ?", id[:])
+	err := row.Err()
+	if err == sql.ErrNoRows {
+		return BadRequestError{"no such snippet"}
+	} else if err != nil {
+		return err
+	}
+
+	contents, err := validateFile(file, header)
+	if err != nil {
+		return err
+	}
+
+	// Update snippet's source file.
+	path := fmtSnippetFilename(id)
+	err = os.WriteFile(path, []byte(contents), 0o644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // --------------------
 // Request.
 // --------------------
@@ -272,13 +321,13 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 }
 
 func RequestSnippet(
-	r *http.Request,
 	db *sql.DB,
+	ctx context.Context,
 	id uuid.UUID,
 	authUserId uint,
 	hasAuthUser bool,
 ) (snippet Snippet, err error) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var row *sql.Row

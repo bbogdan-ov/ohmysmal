@@ -40,11 +40,11 @@ templ snippet(s server.Snippet) {
 
 		<div class="snippet-info row width-fill justify-between">
 			<div class="row gap-2">
-				<span>
+				<span title={ fmt.Sprintf("%d flowers", s.Flowers) }>
 					@icon("lil-flower")
 					{s.Flowers}
 				</span>
-				<span>
+				<span title={ fmt.Sprintf("%d comments", s.Comments) }>
 					@icon("lil-comment")
 					{s.Comments}
 				</span>

@@ -36,9 +36,8 @@ templ snippetFoundPage(
 	comments []server.Comment,
 ) {
 	@page() {
-		// TODO: show a title and an author of the snippet.
-		@pageHead("snippet") {
-			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css">
+		@pageHead(fmt.Sprintf("%s by @%s", s.Title, s.AuthorNickname)) {
+			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css" />
 			<script src="/static/lib/codemirror/codemirror.js"></script>
 			<script src="/static/lib/codemirror/addon-trailingspace.js"></script>
 		}

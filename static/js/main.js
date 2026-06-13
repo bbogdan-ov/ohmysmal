@@ -1,14 +1,21 @@
 let timeout = -1;
 
-function openAuthForms(toggle = false) {
-	const forms = document.getElementById("header-auth-forms");
-	if (!forms) return;
+function toggleElement(id, toggle = true) {
+	const el = document.getElementById(id);
+	if (!el) return null;
 
 	if (toggle) {
-		forms.classList.toggle("hidden");
+		el.classList.toggle("hidden");
 	} else {
-		forms.classList.remove("hidden");
+		el.classList.remove("hidden");
 	}
+
+	return el;
+}
+
+function openAuthForms(toggle = false) {
+	const forms = toggleElement("header-auth-forms", toggle);
+	if (!forms) return;
 
 	forms.scrollIntoView({
 		behavior: "smooth",

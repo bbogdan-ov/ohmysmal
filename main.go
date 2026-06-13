@@ -55,6 +55,7 @@ func main() {
 	http.HandleFunc("/api/logout", h.UserCacheMiddleware(h.HandleApiLogout))
 	http.HandleFunc("/api/register", h.UserCacheMiddleware(h.HandleApiRegister))
 	http.HandleFunc("/api/snippet", h.UserCacheMiddleware(h.HandleApiSnippet))
+	http.HandleFunc("/api/report/{id}", h.UserCacheMiddleware(h.HandleApiReport))
 	http.HandleFunc("/api/flower/{snippet_id}", h.UserCacheMiddleware(h.HandleApiFlower))
 	http.HandleFunc("/api/comment/{id}", h.UserCacheMiddleware(h.HandleApiComment))
 

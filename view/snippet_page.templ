@@ -35,6 +35,11 @@ templ snippetFoundPage(
 	user server.MaybeUser,
 	comments []server.Comment,
 ) {
+	{{
+		userCanReport := user.Ok && user.User.CanReportSnippet(s.AuthorId)
+		userCanDelete := user.Ok && user.User.CanDeleteSnippet(s.AuthorId)
+	}}
+
 	@page() {
 		@pageHead(fmt.Sprintf("%s by @%s", s.Title, s.AuthorNickname)) {
 			<link rel="stylesheet" href="/static/lib/codemirror/codemirror.css" />
@@ -56,10 +61,17 @@ templ snippetFoundPage(
 					<span id="display-zoom-button" class="link-ish" title="Zoom">x1</span>
 					<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
 
-					if user.Ok && user.User.CanDeleteSnippet(s.AuthorId) {
+					if userCanReport {
+						@snippetReportButton(s)
+					}
+					if userCanDelete {
 						@snippetDeleteButton(s.Id)
 					}
 				</div>
+
+				if userCanReport {
+					@snippetReportForm(s.Id)
+				}
 
 				<hr />
 
@@ -134,8 +146,8 @@ templ SnippetFlowers(id uuid.UUID, count uint, active bool, authed bool) {
 		</div>
 
 		<div class="flex-column">
-			<!-- TODO: add and remove flowers on the client, it is not good to
-			|    render all flowers on the server everytime the number of flowers changes. -->
+			// TODO: add and remove flowers on the client, it is not good to
+			// render all flowers on the server everytime the number of flowers changes.
 			<div class="flowers-pile">
 				if count == 0 {
 					<i>The pile is empty...</i>
@@ -218,6 +230,26 @@ templ Comment(user server.MaybeUser, c server.Comment) {
 	</div>
 }
 
+templ snippetReportForm(snippetId uuid.UUID) {
+	<form
+		id="snippet-report"
+		class="hidden"
+		hx-post={ fmt.Sprintf("/api/report/%s", snippetId) }
+		hx-confirm="Are you sure you want to report this snippet?"
+		hx-on::after-request="if (event.detail.successful) location.reload()"
+	>
+		<select name="violation" required>
+			<option selected disabled>What violation does this snippet do?</option>
+			<option value="spam">Spam</option>
+			<option value="politics">Politics</option>
+			<option value="shocking">Shocking content</option>
+			<option value="hatred">Hatred</option>
+			<option value="porn">Porn</option>
+		</select>
+		<button type="submit" class="button">submit</button>
+	</form>
+}
+
 templ commentDeleteButton(id uint) {
 	<span
 		class="link-ish text-red"
@@ -240,4 +272,26 @@ templ snippetDeleteButton(id uuid.UUID) {
 	>
 		@icon("trash")
 	</span>
+}
+
+templ snippetReportButton(s server.Snippet) {
+	if s.AuthUserRepoted {
+		<span
+			class="link-ish"
+			title="Take the report back from this snippet"
+			hx-delete={ fmt.Sprintf("/api/report/%s", s.Id) }
+			hx-swap="none"
+			hx-on::after-request="if (event.detail.successful) location.reload()"
+		>
+			take my report back
+		</span>
+	} else {
+		<span
+			class="link-ish text-red"
+			title="Report this snippet"
+			onclick="toggleElement('snippet-report')"
+		>
+			report
+		</span>
+	}
 }

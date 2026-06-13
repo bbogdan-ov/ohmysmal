@@ -441,6 +441,80 @@ func (h Handler) HandleApiFlower(w http.ResponseWriter, r *http.Request) {
 	v.ServeHTTP(w, r)
 }
 
+func (h Handler) HandleApiReport(w http.ResponseWriter, r *http.Request) {
+	var err error
+	switch r.Method {
+	case "POST":
+		err = h.handlePostApiReport(w, r)
+	case "DELETE":
+		err = h.handleDeleteApiReport(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+
+	if err != nil {
+		Error(w, err)
+	}
+}
+
+func (h Handler) handlePostApiReport(w http.ResponseWriter, r *http.Request) error {
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
+	}
+
+	id, err := UUIDPathValue(r, "id")
+	if err != nil {
+		return err
+	}
+
+	violation_str := r.FormValue("violation")
+	var violation server.Violation
+
+	switch violation_str {
+	case "spam":
+		violation = server.VIOLATION_SPAM
+	case "politics":
+		violation = server.VIOLATION_POLITICS
+	case "shocking":
+		violation = server.VIOLATION_SHOCKING
+	case "hatred":
+		violation = server.VIOLATION_HATRED
+	case "porn":
+		violation = server.VIOLATION_PORN
+	default:
+		return server.BadRequestError{"Choose a violation!"}
+	}
+
+	err = server.ReportSnippet(h.db, r.Context(), user, id, violation)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h Handler) handleDeleteApiReport(w http.ResponseWriter, r *http.Request) error {
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		return err
+	}
+
+	id, err := UUIDPathValue(r, "id")
+	if err != nil {
+		return err
+	}
+
+	err = server.DeleteSnippetReport(h.db, r.Context(), user, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // --------------------
 // Comments API.
 // --------------------

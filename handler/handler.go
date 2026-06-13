@@ -393,12 +393,6 @@ func (h Handler) handlePatchApiSnippet(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	session := h.DefaultSession(r)
-	user, err := h.authorizedUser(session)
-	if err != nil {
-		return err
-	}
-
 	// Parse form data.
 	err = r.ParseMultipartForm(consts.MAX_SNIPPET_FILE_SIZE * 3) // *3 just in case
 	if err != nil {
@@ -410,7 +404,7 @@ func (h Handler) handlePatchApiSnippet(w http.ResponseWriter, r *http.Request) e
 		return err
 	}
 
-	err = server.UpdateSnippetSource(h.db, r.Context(), user, id, file, header)
+	err = server.UpdateSnippetSource(h.db, r.Context(), id, file, header)
 	if err != nil {
 		return err
 	}

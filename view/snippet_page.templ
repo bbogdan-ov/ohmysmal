@@ -56,7 +56,7 @@ templ snippetFoundPage(
 					<span id="display-zoom-button" class="link-ish" title="Zoom">x1</span>
 					<a href={ fmt.Sprintf("/editor?snippet=%s", s.Id) }>open in editor</a>
 
-					if user.Ok && server.UserCanDeleteSnippet(user.User, s) {
+					if user.Ok && user.User.CanDeleteSnippet(s.AuthorId) {
 						@snippetDeleteButton(s.Id)
 					}
 				</div>
@@ -208,7 +208,7 @@ templ Comment(user server.MaybeUser, c server.Comment) {
 				<span>·</span>
 				@TimeAgo(c.Date, "")
 
-				if user.Ok && server.UserCanDeleteComment(user.User, c) {
+				if user.Ok && user.User.CanDeleteComment(c.AuthorId) {
 					<span>·</span>
 					@commentDeleteButton(c.Id)
 				}

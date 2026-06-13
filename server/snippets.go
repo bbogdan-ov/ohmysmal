@@ -228,8 +228,8 @@ func DeleteSnippet(
 		return err
 	}
 
-	if !(user.Role == ROLE_ADMIN || authorId == user.Id) {
-		return BadRequestError{"not an author of the comment"}
+	if !user.CanDeleteSnippet(authorId) {
+		return BadRequestError{"not an author of the comment or an admin"}
 	}
 
 	_, err = db.ExecContext(ctx, "DELETE FROM snippets WHERE id = ?", id[:])
@@ -243,7 +243,6 @@ func DeleteSnippet(
 func UpdateSnippetSource(
 	db *sql.DB,
 	ctx context.Context,
-	user User,
 	id uuid.UUID,
 	file multipart.File,
 	header *multipart.FileHeader,

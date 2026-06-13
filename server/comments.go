@@ -73,8 +73,8 @@ func DeleteComment(
 		return comment, err
 	}
 
-	if !(user.Role == ROLE_ADMIN || comment.AuthorId == user.Id) {
-		return comment, BadRequestError{"not an author of the comment"}
+	if !user.CanDeleteComment(comment.AuthorId) {
+		return comment, BadRequestError{"not an author of the comment or an admin"}
 	}
 
 	_, err = db.ExecContext(ctx, "DELETE FROM comments WHERE id = ?", id)

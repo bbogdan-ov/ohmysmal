@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"unicode/utf8"
 	"database/sql"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
-	"golang.org/x/crypto/bcrypt"
+	"unicode/utf8"
 
 	"ohmysmal/consts"
 )
@@ -15,7 +15,7 @@ type UserRole int
 type UserStatus int
 
 const (
-	ROLE_INVALID  UserRole = iota
+	ROLE_INVALID UserRole = iota
 	ROLE_USER
 	ROLE_ADMIN
 )
@@ -154,9 +154,9 @@ func ValidateNickname(nickname string) (err error) {
 	return nil
 }
 
-func UserCanDeleteSnippet(user User, snippet Snippet) bool {
-	return user.Role == ROLE_ADMIN || snippet.AuthorId == user.Id
+func (user User) CanDeleteSnippet(authorId uint) bool {
+	return user.Role == ROLE_ADMIN || authorId == user.Id
 }
-func UserCanDeleteComment(user User, comment Comment) bool {
-	return user.Role == ROLE_ADMIN || comment.AuthorId == user.Id
+func (user User) CanDeleteComment(authorId uint) bool {
+	return user.Role == ROLE_ADMIN || authorId == user.Id
 }

@@ -1,12 +1,12 @@
 package handler
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
-	"database/sql"
 
 	"github.com/gorilla/sessions"
 

@@ -5,9 +5,12 @@ COMPILER_SOURCE := $(shell find . -type f -iname '*.rs')
 .PHONY: all
 all: ohmysmal
 
-ohmysmal: $(SERVER_SOURCE) $(TEMPL_SOURCE) go.mod go.sum static/wasm/compiler.wasm
-	go tool templ generate
+ohmysmal: $(SERVER_SOURCE) view/.generated go.mod go.sum static/wasm/compiler.wasm
 	go build .
+
+view/.generated: $(TEMPL_SOURCE)
+	go tool templ generate
+	@touch view/.generated
 
 static/wasm/compiler.wasm: $(COMPILER_SOURCE)
 	cd compiler && cargo build --release --target=wasm32-unknown-unknown

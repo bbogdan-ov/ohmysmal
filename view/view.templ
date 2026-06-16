@@ -38,6 +38,9 @@ templ header(user server.MaybeUser) {
 				@icon("editor")
 				editor
 			</a>
+			if user.Ok && user.User.Role == server.ROLE_ADMIN {
+				<a href="/panel" class="link-ish">panel</a>
+			}
 		</div>
 
 		if user.Ok {

@@ -14,6 +14,7 @@ templ SnippetPage(
 	s server.MaybeSnippet,
 	user server.MaybeUser,
 	comments []server.Comment,
+	reports []server.Report,
 ) {
 	if !s.Ok {
 		@page() {
@@ -26,7 +27,7 @@ templ SnippetPage(
 			}
 		}
 	} else {
-		@snippetFoundPage(s.Snippet, user, comments)
+		@snippetFoundPage(s.Snippet, user, comments, reports)
 	}
 }
 
@@ -34,6 +35,7 @@ templ snippetFoundPage(
 	s server.Snippet,
 	user server.MaybeUser,
 	comments []server.Comment,
+	reports []server.Report,
 ) {
 	{{
 		userCanReport := user.Ok && user.User.CanReportSnippet(s.AuthorId)
@@ -71,6 +73,9 @@ templ snippetFoundPage(
 
 				if userCanReport {
 					@snippetReportForm(s.Id)
+				}
+				if user.Ok && user.User.Role == server.ROLE_ADMIN && len(reports) > 0 {
+					@snippetReports(s.Id, reports)
 				}
 
 				<hr />
@@ -230,23 +235,62 @@ templ Comment(user server.MaybeUser, c server.Comment) {
 	</div>
 }
 
+templ snippetReports(snippetId uuid.UUID, reports []server.Report) {
+	<div class="details-wrapper">
+		<details>
+			<summary>Reports ({ len(reports) })</summary>
+
+			<div class="details-content">
+				<span
+					class="link-ish text-red"
+					hx-confirm="Are you sure you want to delete all reports from this snippet?"
+					hx-delete={ fmt.Sprintf("/api/reports/%s", snippetId) }
+					hx-on::after-request="if (event.detail.successful) location.reload()"
+				>delete all</span>
+
+				<table border="0" cellspacing="0" cellpadding="0">
+					@snippetReportsList(reports)
+				</table>
+			</div>
+		</details>
+	</div>
+}
+
+templ snippetReportsList(reports []server.Report) {
+	<tr>
+		<th>Violation</th>
+		<th>Reporter</th>
+		<th>Date</th>
+	</tr>
+
+	for _, r := range reports {
+		<tr>
+			<td>{server.ViolationStr(r.Violation)}</td>
+			<td>{"@"}{r.AuthorNickname}</td>
+			<td>@TimeAgo(r.Date, "")</td>
+		</tr>
+	}
+}
+
 templ snippetReportForm(snippetId uuid.UUID) {
 	<form
 		id="snippet-report"
-		class="hidden"
+		class="report-form hidden"
 		hx-post={ fmt.Sprintf("/api/report/%s", snippetId) }
 		hx-confirm="Are you sure you want to report this snippet?"
 		hx-on::after-request="if (event.detail.successful) location.reload()"
 	>
-		<select name="violation" required>
-			<option selected disabled>What violation does this snippet do?</option>
-			<option value="spam">Spam</option>
-			<option value="politics">Politics</option>
-			<option value="shocking">Shocking content</option>
-			<option value="hatred">Hatred</option>
-			<option value="porn">Porn</option>
-		</select>
-		<button type="submit" class="button">submit</button>
+		<div class="report-form-content">
+			<select name="violation" required>
+				<option selected disabled>Violation</option>
+				<option value="spam">Spam</option>
+				<option value="politics">Politics</option>
+				<option value="shocking">Shocking content</option>
+				<option value="hatred">Hatred</option>
+				<option value="porn">Porn</option>
+			</select>
+			<button type="submit" class="button">submit</button>
+		</div>
 	</form>
 }
 

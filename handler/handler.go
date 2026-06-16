@@ -1,22 +1,22 @@
 package handler
 
 import (
-	"fmt"
 	"database/sql"
-	"log"
-	"net/http"
-	"math/rand"
-	"strings"
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"log"
+	"math/rand"
+	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/robfig/go-cache"
 
+	"ohmysmal/consts"
 	"ohmysmal/server"
 	"ohmysmal/view"
-	"ohmysmal/consts"
 )
 
 type Handler struct {
@@ -48,7 +48,7 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	snippets := make([]server.Snippet, 0, 20)
 	err := server.RequestSnippets(h.db, &snippets, user.Id, authed)
 	if err != nil {
-		log.Printf("ERROR: Failed to request the list of snippets: %s", err)
+		log.Printf("ERROR: Failed to request a list of snippets: %s", err)
 		ErrorPage(w, r, err)
 		return
 	}
@@ -63,7 +63,7 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 		"Ok UXN",
 		"Yes, it's here, UXN",
 	}
-	splash := splashes[rand.Int() % len(splashes)]
+	splash := splashes[rand.Int()%len(splashes)]
 
 	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets, splash))
 	v.ServeHTTP(w, r)
@@ -108,13 +108,15 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 
 	var snippet server.Snippet
 	var comments []server.Comment
+	var reports []server.Report
 	ok := true
 
 	// Parse snippet id from the URL.
 	snippetId, err := UUIDQueryGet(r, "id")
 	if err != nil {
 		// Invalid id, just redirect.
-		Redirect(w, "/")
+		w.Header().Add("Location", "/")
+		w.WriteHeader(http.StatusMovedPermanently)
 		return
 	}
 
@@ -135,6 +137,14 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 			ErrorPage(w, r, err)
 			return
 		}
+
+		// Request snippet reports.
+		reports = make([]server.Report, 0)
+		err = server.RequestSnippetReports(h.db, r.Context(), snippetId, &reports)
+		if err != nil {
+			ErrorPage(w, r, err)
+			return
+		}
 	}
 
 	// Render the page.
@@ -142,7 +152,61 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 		server.MaybeSnippet{Snippet: snippet, Ok: ok},
 		server.MaybeUser{User: user, Ok: authed},
 		comments,
+		reports,
 	))
+	v.ServeHTTP(w, r)
+}
+
+func (h Handler) HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
+	session := h.DefaultSession(r)
+	user, authed := h.authorizedUserOrFalse(session)
+	if !authed || user.Role != server.ROLE_ADMIN {
+		w.Header().Add("Location", "/")
+		w.WriteHeader(http.StatusMovedPermanently)
+		return
+	}
+
+	snippets := make([]server.Snippet, 0, 20)
+
+	rows, err := h.db.Query(`
+		SELECT *
+		FROM snippets_with_author
+		WHERE reports > 0
+		ORDER BY reports DESC
+	`)
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+	defer rows.Close()
+
+	var s server.Snippet
+	for {
+		if !rows.Next() {
+			break
+		}
+
+		err = rows.Scan(
+			&s.Id,
+			&s.AuthorId,
+			&s.Title,
+			&s.Flowers,
+			&s.Comments,
+			&s.Status,
+			&s.Date,
+			&s.RemixOf,
+			&s.Reports,
+			&s.AuthorNickname,
+		)
+		if err != nil {
+			ErrorPage(w, r, err)
+			return
+		}
+
+		snippets = append(snippets, s)
+	}
+
+	v := templ.Handler(view.AdminPanelPage(user, snippets))
 	v.ServeHTTP(w, r)
 }
 
@@ -513,6 +577,31 @@ func (h Handler) handleDeleteApiReport(w http.ResponseWriter, r *http.Request) e
 	}
 
 	return nil
+}
+
+func (h Handler) HandleApiReports(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "DELETE") {
+		return
+	}
+
+	session := h.DefaultSession(r)
+	user, err := h.authorizedUser(session)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	id, err := UUIDPathValue(r, "id")
+	if err != nil {
+		Error(w, err)
+		return
+	}
+
+	err = server.DeleteSnippetReports(h.db, r.Context(), user, id)
+	if err != nil {
+		Error(w, err)
+		return
+	}
 }
 
 // --------------------

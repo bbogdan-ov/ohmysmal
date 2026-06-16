@@ -1,0 +1,44 @@
+package view
+
+import (
+	"fmt"
+
+	"ohmysmal/server"
+)
+
+templ AdminPanelPage(user server.User, snippets []server.Snippet) {
+	{{ maybeUser := server.MaybeUser{User: user, Ok: true} }}
+
+	@page() {
+		@pageHead("admin panel")
+		@pageBody() {
+			<div class="container">
+				@header(maybeUser)
+				@reportedSnippetsTable(snippets)
+				@footer()
+			</div>
+		}
+	}
+}
+
+templ reportedSnippetsTable(snippets []server.Snippet) {
+	<h2 style="margin-top: 2rem; margin-bottom: 1rem;">Reported snippets</h2>
+
+	<table>
+		<tr>
+			<th>#</th>
+			<th>Snippet</th>
+			<th>Reports</th>
+		</tr>
+		for idx, s := range snippets {
+			<tr>
+				<td class="muted">{idx + 1}</td>
+				<td>
+					<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
+					<span class="muted">{"@"}{s.AuthorNickname}</span>
+				</td>
+				<td>{s.Reports}</td>
+			</tr>
+		}
+	</table>
+}

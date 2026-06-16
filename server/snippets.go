@@ -47,10 +47,21 @@ type Snippet struct {
 	Status   SnippetStatus
 	Date     time.Time
 	RemixOf  uuid.UUID
+	Reports  uint
 
 	AuthorNickname   string // Joined.
 	AuthUserFlowered bool   // Whether the currently authorized user flowered this snippet.
 	AuthUserRepoted  bool   // Whether the currently authorized user reported thi snippet.
+}
+
+type Report struct {
+	AuthorId  uint
+	SnippetId uuid.UUID
+	Violation Violation
+	Date      time.Time
+
+	// Joined
+	AuthorNickname string
 }
 
 type MaybeSnippet struct {
@@ -116,6 +127,7 @@ func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (snippet Snipp
 		&snippet.Status,
 		&snippet.Date,
 		&snippet.RemixOf,
+		&snippet.Reports,
 		&snippet.AuthorNickname,
 	)
 	if err == sql.ErrNoRows {
@@ -349,35 +361,63 @@ func DeleteSnippetReport(
 	return nil
 }
 
+func DeleteSnippetReports(
+	db *sql.DB,
+	ctx context.Context,
+	user User,
+	snippetId uuid.UUID,
+) error {
+	if user.Role != ROLE_ADMIN {
+		return BadRequestError{"not an admin"}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := db.ExecContext(
+		ctx,
+		"DELETE FROM reports WHERE snippet_id = ?",
+		snippetId[:],
+	)
+	if err != nil {
+		return err
+	}
+
+	if n, _ := result.RowsAffected(); n <= 0 {
+		return BadRequestError{"no reports on this snippet"}
+	}
+
+	return nil
+}
+
 // --------------------
 // Request.
 // --------------------
 
 func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUser bool) (err error) {
-	var rows *sql.Rows
-
-	if hasAuthUser {
-		// Select all snippets + add a new column "flowered" that indicates
-		// wheter the user with id `authUserId` flowered this snippet.
-		rows, err = db.Query(`
+	// Select all snippets and add a new column "flowered" that indicates
+	// wheter a user with id `authUserId` flowered this snippet.
+	const QUERY = `
 		SELECT
 			snippets_with_author.*,
 			(flowers.user_id IS NOT NULL) as flowered
 		FROM snippets_with_author
 		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
 		ORDER BY date DESC
-		`, authUserId)
-	} else {
-		rows, err = db.Query("SELECT *, false as flowered FROM snippets_with_author ORDER BY date DESC")
-	}
+	`
 
+	var rows *sql.Rows
+	if hasAuthUser {
+		rows, err = db.Query(QUERY, authUserId)
+	} else {
+		rows, err = db.Query(QUERY, nil)
+	}
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
 	var s Snippet
-
 	for {
 		if !rows.Next() {
 			break
@@ -401,15 +441,7 @@ func RequestSnippet(
 	authUserId uint,
 	hasAuthUser bool,
 ) (snippet Snippet, err error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	var row *sql.Row
-
-	if hasAuthUser {
-		// Select all snippets + add a new column "flowered" that indicates
-		// wheter the user with id `authUserId` flowered this snippet.
-		row = db.QueryRowContext(ctx, `
+	const QUERY = `
 		SELECT
 			snippets_with_author.*,
 			(flowers.user_id IS NOT NULL) as flowered,
@@ -418,16 +450,13 @@ func RequestSnippet(
 		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
 		LEFT JOIN reports ON id = reports.snippet_id AND reports.author_id = ?
 		WHERE id = ?
-		`, authUserId, authUserId, id[:])
+	`
+
+	var row *sql.Row
+	if hasAuthUser {
+		row = db.QueryRowContext(ctx, QUERY, authUserId, authUserId, id[:])
 	} else {
-		row = db.QueryRowContext(ctx, `
-		SELECT
-			snippets_with_author.*,
-			false as flowered,
-			false as reported
-		FROM snippets_with_author
-		WHERE id = ?
-		`, id[:])
+		row = db.QueryRowContext(ctx, QUERY, nil, nil, id[:])
 	}
 
 	err = RowScanSnippet(row, &snippet)
@@ -436,6 +465,48 @@ func RequestSnippet(
 	}
 
 	return snippet, nil
+}
+
+func RequestSnippetReports(db *sql.DB, ctx context.Context, id uuid.UUID, reports *[]Report) (err error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT
+			reports.author_id,
+			reports.snippet_id,
+			reports.violation + 0 as violation,
+			reports.date,
+			users.nickname as author_nickname
+		FROM reports
+		LEFT JOIN users ON author_id = users.id
+		WHERE reports.snippet_id = ?
+		ORDER BY date DESC
+	`, id[:])
+
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var r Report
+	for {
+		if !rows.Next() {
+			break
+		}
+
+		err = rows.Scan(
+			&r.AuthorId,
+			&r.SnippetId,
+			&r.Violation,
+			&r.Date,
+			&r.AuthorNickname,
+		)
+		if err != nil {
+			return err
+		}
+
+		*reports = append(*reports, r)
+	}
+
+	return nil
 }
 
 // --------------------
@@ -452,6 +523,7 @@ func RowScanSnippet(row *sql.Row, s *Snippet) error {
 		&s.Status,
 		&s.Date,
 		&s.RemixOf,
+		&s.Reports,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 		&s.AuthUserRepoted,
@@ -467,6 +539,7 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 		&s.Status,
 		&s.Date,
 		&s.RemixOf,
+		&s.Reports,
 		&s.AuthorNickname,
 		&s.AuthUserFlowered,
 	)
@@ -474,4 +547,21 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 
 func fmtSnippetFilename(id uuid.UUID) string {
 	return fmt.Sprintf("%s/%s.smal", SNIPPETS_DIR, id)
+}
+
+func ViolationStr(v Violation) string {
+	switch v {
+	case VIOLATION_SPAM:
+		return "Spam"
+	case VIOLATION_POLITICS:
+		return "Politics"
+	case VIOLATION_SHOCKING:
+		return "Shocking content"
+	case VIOLATION_HATRED:
+		return "Hatred"
+	case VIOLATION_PORN:
+		return "Porn"
+	default:
+		return "INVALID"
+	}
 }

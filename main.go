@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -49,6 +49,7 @@ func main() {
 	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleHome))
 	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleEditor))
 	http.HandleFunc("/snippet", h.UserCacheMiddleware(h.HandleSnippet))
+	http.HandleFunc("/panel", h.UserCacheMiddleware(h.HandleAdminPanel))
 	http.HandleFunc("/hey", h.UserCacheMiddleware(h.HandleHey))
 
 	http.HandleFunc("/api/login", h.UserCacheMiddleware(h.HandleApiLogin))
@@ -56,6 +57,7 @@ func main() {
 	http.HandleFunc("/api/register", h.UserCacheMiddleware(h.HandleApiRegister))
 	http.HandleFunc("/api/snippet", h.UserCacheMiddleware(h.HandleApiSnippet))
 	http.HandleFunc("/api/report/{id}", h.UserCacheMiddleware(h.HandleApiReport))
+	http.HandleFunc("/api/reports/{id}", h.UserCacheMiddleware(h.HandleApiReports))
 	http.HandleFunc("/api/flower/{snippet_id}", h.UserCacheMiddleware(h.HandleApiFlower))
 	http.HandleFunc("/api/comment/{id}", h.UserCacheMiddleware(h.HandleApiComment))
 

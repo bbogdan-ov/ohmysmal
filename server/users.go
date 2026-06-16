@@ -155,7 +155,7 @@ func ValidateNickname(nickname string) (err error) {
 }
 
 func (user User) CanReportSnippet(authorId uint) bool {
-	return authorId != user.Id
+	return authorId != user.Id && user.Role != ROLE_ADMIN
 }
 func (user User) CanDeleteSnippet(authorId uint) bool {
 	return user.Role == ROLE_ADMIN || authorId == user.Id

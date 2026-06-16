@@ -29,39 +29,24 @@ async function init() {
 		emu.load(program);
 	}
 
-	console.log("TODO: loading the uxnsmal compiler");
-	const { compile } = await initCompiler(load);
-
-	console.log("TODO: done loading");
-
 	// Init the text editor.
+	const source = document.getElementById("snippet_source").value;
 	const editor = CodeMirror(
 		document.getElementById("editor-wrapper"),
-		editorConfig("// Loading...", true),
+		editorConfig("", true),
 	);
 
-	const params = new URLSearchParams(new URL(window.location.href).search);
-	const snippetId = params.get("id");
-	if (!snippetId) return;
-
-	try {
-		console.log("TODO: Loading the snippet source code...");
-		const source = await fetchSnippetSource(snippetId)
-		console.log("TODO: source code loaded");
-		compile(source);
-
-		const FIRST_N_LINES = 16;
-		const linesLeft = Math.max(countLines(source) - FIRST_N_LINES, 0);
-		if (linesLeft > 0) {
-			const s = sliceLines(source, FIRST_N_LINES) + `\n\n// ${linesLeft} more lines...`
-			editor.setValue(s);
-		} else {
-			editor.setValue(source);
-		}
-	} catch (err) {
-		console.error("TODO: output error");
-		console.error(err);
+	const FIRST_N_LINES = 16;
+	const linesLeft = Math.max(countLines(source) - FIRST_N_LINES, 0);
+	if (linesLeft > 0) {
+		const s = sliceLines(source, FIRST_N_LINES) + `\n\n// ${linesLeft} more lines...`
+		editor.setValue(s);
+	} else {
+		editor.setValue(source);
 	}
+
+	const { compile } = await initCompiler(load);
+	compile(source);
 
 	const contWidth = container.getBoundingClientRect().width;
 	const targetSize = Math.min(contWidth, innerWidth, innerHeight - 100);

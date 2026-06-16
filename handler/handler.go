@@ -83,7 +83,13 @@ func (h Handler) HandleEditor(w http.ResponseWriter, r *http.Request) {
 
 	snippetId, hasSnippet := UUIDQueryGetOrFalse(r, "snippet")
 	if hasSnippet {
-		snippet, source, err = server.SnippetSource(h.db, r.Context(), snippetId)
+		snippet, err = server.RequestSnippet(h.db, r.Context(), snippetId, user.Id, authed)
+		if err != nil {
+			ErrorPage(w, r, err)
+			return
+		}
+
+		source, err = server.ReadSnippetSource(snippetId)
 		if err != nil {
 			ErrorPage(w, r, err)
 			return
@@ -129,6 +135,13 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read trimmed snippet source code.
+	source, err := server.ReadSnippetSource(snippetId)
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
 	if ok {
 		// Request snippet comments.
 		comments = make([]server.Comment, 0)
@@ -151,6 +164,7 @@ func (h Handler) HandleSnippet(w http.ResponseWriter, r *http.Request) {
 	v := templ.Handler(view.SnippetPage(
 		server.MaybeSnippet{Snippet: snippet, Ok: ok},
 		server.MaybeUser{User: user, Ok: authed},
+		source,
 		comments,
 		reports,
 	))

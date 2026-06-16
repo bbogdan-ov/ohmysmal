@@ -13,6 +13,7 @@ import (
 templ SnippetPage(
 	s server.MaybeSnippet,
 	user server.MaybeUser,
+	source string,
 	comments []server.Comment,
 	reports []server.Report,
 ) {
@@ -27,13 +28,14 @@ templ SnippetPage(
 			}
 		}
 	} else {
-		@snippetFoundPage(s.Snippet, user, comments, reports)
+		@snippetFoundPage(s.Snippet, user, source, comments, reports)
 	}
 }
 
 templ snippetFoundPage(
 	s server.Snippet,
 	user server.MaybeUser,
+	source string,
 	comments []server.Comment,
 	reports []server.Report,
 ) {
@@ -89,6 +91,7 @@ templ snippetFoundPage(
 					<span>{"@"}{s.AuthorNickname}</span>
 				</div>
 
+				<textarea style="display: none;" id="snippet_source">{source}</textarea>
 				<div id="editor-wrapper" style="width: 100%;">/**/</div>
 
 				<hr />

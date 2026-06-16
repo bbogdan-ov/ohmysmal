@@ -121,37 +121,12 @@ func PostSnippet(
 	return id, nil
 }
 
-func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (snippet Snippet, source string, err error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	row := db.QueryRowContext(ctx, "SELECT * FROM snippets_with_author WHERE id = ?", id[:])
-
-	err = row.Scan(
-		&snippet.Id,
-		&snippet.AuthorId,
-		&snippet.Title,
-		&snippet.Flowers,
-		&snippet.Comments,
-		&snippet.Status,
-		&snippet.Date,
-		&snippet.RemixOf,
-		&snippet.Reports,
-		&snippet.AuthorNickname,
-	)
-	if err == sql.ErrNoRows {
-		return snippet, "", BadRequestError{"no such snippet"}
-	} else if err != nil {
-		log.Printf("SNIPPETS: ERROR: Failed to fetch snippet source code: %s", err)
-		return snippet, "", err
-	}
-
+func ReadSnippetSource(id uuid.UUID) (source string, err error) {
 	contents, err := os.ReadFile(fmtSnippetFilename(id, "smal"))
 	if err != nil {
-		return snippet, "", err
+		return "", err
 	}
-
-	return snippet, string(contents), nil
+	return string(contents), err
 }
 
 func validateFile(file multipart.File, header *multipart.FileHeader) (contents string, err error) {

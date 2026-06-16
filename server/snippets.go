@@ -80,6 +80,8 @@ func PostSnippet(
 	title string,
 	file multipart.File,
 	header *multipart.FileHeader,
+	previewFile multipart.File,
+	previewHeader *multipart.FileHeader,
 ) (id uuid.UUID, err error) {
 	// TODO: remove repeating whitespaces from the title.
 	title = strings.TrimSpace(title)
@@ -96,6 +98,13 @@ func PostSnippet(
 	err = validateAndWriteFile(id, file, header)
 	if err != nil {
 		log.Printf("SNIPPETS: ERROR: Snippet posting failed: File is invalid: %s", err)
+		return uuid.UUID{}, err
+	}
+
+	// Store preview image to the file system.
+	err = validateAndWritePreviewFile(id, previewFile, previewHeader)
+	if err != nil {
+		log.Printf("SNIPPETS: ERROR: Snippet posting failed: Preview image file is invalid: %s", err)
 		return uuid.UUID{}, err
 	}
 
@@ -137,7 +146,7 @@ func SnippetSource(db *sql.DB, ctx context.Context, id uuid.UUID) (snippet Snipp
 		return snippet, "", err
 	}
 
-	contents, err := os.ReadFile(fmtSnippetFilename(id))
+	contents, err := os.ReadFile(fmtSnippetFilename(id, "smal"))
 	if err != nil {
 		return snippet, "", err
 	}
@@ -159,6 +168,15 @@ func validateFile(file multipart.File, header *multipart.FileHeader) (contents s
 	return contents, err
 }
 
+func validatePreviewFile(file multipart.File, header *multipart.FileHeader) (bytes []byte, err error) {
+	if header.Size > consts.MAX_SNIPPET_FILE_SIZE {
+		msg := fmt.Sprintf("Preview file is too large! It should not exceed %d bytes of size, got %d.", consts.MAX_SNIPPET_FILE_SIZE, header.Size)
+		return []byte{}, BadRequestError{msg}
+	}
+
+	return io.ReadAll(file)
+}
+
 func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.FileHeader) error {
 	contents, err := validateFile(file, header)
 	if err != nil {
@@ -167,7 +185,23 @@ func validateAndWriteFile(id uuid.UUID, file multipart.File, header *multipart.F
 
 	const perm = 0o644 // read-write for owner, read-only for other
 
-	err = os.WriteFile(fmtSnippetFilename(id), []byte(contents), perm)
+	err = os.WriteFile(fmtSnippetFilename(id, "smal"), []byte(contents), perm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateAndWritePreviewFile(id uuid.UUID, file multipart.File, header *multipart.FileHeader) error {
+	bytes, err := validatePreviewFile(file, header)
+	if err != nil {
+		return err
+	}
+
+	const perm = 0o644 // read-write for owner, read-only for other
+
+	err = os.WriteFile(fmtSnippetFilename(id, "png"), bytes, perm)
 	if err != nil {
 		return err
 	}
@@ -289,7 +323,7 @@ func UpdateSnippetSource(
 	}
 
 	// Update snippet's source file.
-	path := fmtSnippetFilename(id)
+	path := fmtSnippetFilename(id, "smal")
 	err = os.WriteFile(path, []byte(contents), 0o644)
 	if err != nil {
 		return err
@@ -545,8 +579,8 @@ func RowsScanSnippet(rows *sql.Rows, s *Snippet) error {
 	)
 }
 
-func fmtSnippetFilename(id uuid.UUID) string {
-	return fmt.Sprintf("%s/%s.smal", SNIPPETS_DIR, id)
+func fmtSnippetFilename(id uuid.UUID, ext string) string {
+	return fmt.Sprintf("%s/%s.%s", SNIPPETS_DIR, id, ext)
 }
 
 func ViolationStr(v Violation) string {

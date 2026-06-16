@@ -188,21 +188,7 @@ templ SnippetComments(
 				hx-swap="outerHTML"
 				hx-on::after-request="if(event.detail.successful) this.reset()"
 			>
-				<div class="comment-textarea">
-					<div class="shadow"></div>
-					<div class="wrapper">
-						<textarea
-							name="text"
-							placeholder="Carefully write down your thoughts here..."
-							required
-							maxlength={consts.MAX_COMMENT_TEXT_LEN}
-							oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
-						></textarea>
-						<button type="submit" class="link-ish">
-							@icon("plane")
-						</button>
-					</div>
-				</div>
+				@FunkyTextarea("text", "Carefully write down your thoughts here...", consts.MAX_COMMENT_TEXT_LEN)
 			</form>
 		} else {
 			<i class="muted">~ log in to leave a comment ~</i>

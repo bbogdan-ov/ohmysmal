@@ -33,6 +33,17 @@ templ feed(snippets []server.Snippet) {
 }
 templ snippet(s server.Snippet) {
 	<article class="snippet">
+		<a class="snippet-preview" href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>
+			<img
+				class="loading"
+				src={ fmt.Sprintf("/snippets/%s.png", s.Id) }
+				alt={s.Title}
+				onload="this.classList.remove('loading')"
+				onerror="this.classList.add('error')"
+				loading="lazy"
+			/>
+		</a>
+
 		<p>
 			<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
 			<span class="muted">{"@"}{s.AuthorNickname}</span>
@@ -49,7 +60,7 @@ templ snippet(s server.Snippet) {
 					{s.Comments}
 				</span>
 			</div>
-			@TimeAgo(s.Date, "")
+			@TimeAgo(s.Date, "text-small")
 		</div>
 	</article>
 }

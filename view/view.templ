@@ -140,6 +140,24 @@ templ registerForm() {
 	</form>
 }
 
+templ FunkyTextarea(name, placeholder string, maxlen int) {
+	<div class="funky-textarea">
+		<div class="shadow"></div>
+		<div class="wrapper">
+			<textarea
+				name={name}
+				placeholder={placeholder}
+				required
+				maxlength={maxlen}
+				oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+			></textarea>
+			<button type="submit" class="link-ish">
+				@icon("plane")
+			</button>
+		</div>
+	</div>
+}
+
 templ icon(name string) {
 	@iconWithStyle(name, "")
 }

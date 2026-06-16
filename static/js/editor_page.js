@@ -70,6 +70,10 @@ alias enum byte Datetime {
 	isdst  { 0xca }
 }`;
 
+let emu;
+let publishModal;
+let previewUrl = null;
+
 async function init() {
 	let changed = false;
 	let errorsCount = 0;
@@ -79,18 +83,16 @@ async function init() {
 	let wantsToPublish = false;
 
 	// Init the UXN VARVARA emulator.
-	const emu = new Emu();
+	emu = new Emu();
 	emu.init();
 
-	let publishModalOpen = false;
-	const publishModal = document.getElementById("editor-publish-modal");
-	const publishButton = document.getElementById("publish-button");
-	const runButton = document.getElementById("run-button");
+	publishModal = document.getElementById("editor_publish_modal");
+	const runButton = document.getElementById("run_button");
 
 	// Init the text editor.
-	const editorStats = document.getElementById("editor-stats");
+	const editorStats = document.getElementById("editor_stats");
 	const editor = CodeMirror.fromTextArea(
-		document.getElementById("snippet-source"),
+		document.getElementById("snippet_source"),
 		editorConfig(),
 	);
 	if (editor.getValue() == "") {
@@ -108,7 +110,7 @@ async function init() {
 	// Init display window.
 	const win = initDisplayWindow(emu, editor);
 
-	const problems = document.getElementById("editor-problems");
+	const problems = document.getElementById("editor_problems");
 
 	function addMessage(msg, className) {
 		const m = document.createElement("p");
@@ -170,26 +172,18 @@ async function init() {
 
 	// TODO: save and load code in the local storage.
 	// Prevent the editor from closing with unsaved changes.
-	window.addEventListener('beforeunload', function (e) {
+	window.addEventListener("beforeunload", e => {
 		if (!changed) return;
 		e.preventDefault();
-		e.returnValue = '';
+		e.returnValue = "";
 	});
 
-	if (publishButton && publishModal) {
-		publishButton.addEventListener("click", () => {
-			publishModal.classList.add("open");
-			publishModalOpen = true;
-		})
-		window.addEventListener("pointerdown", e => {
-			if (!publishModalOpen) return;
-
-			if (!e.target.closest("#editor-publish-modal")) {
-				publishModal.classList.remove("open");
-				publishModalOpen = false;
-			}
-		})
-	}
+	window.addEventListener("keydown", e => {
+		if (publishModal.classList.contains("open") && e.ctrlKey && e.code == "KeyP") {
+			e.preventDefault();
+			reloadPublishPreview();
+		}
+	})
 
 	function onCompiledSuccessfully() {
 		console.log("Compiled successfully");
@@ -203,13 +197,13 @@ async function init() {
 	}
 
 	async function publish() {
-		const form = document.getElementById("editor-publish-form");
+		const form = document.getElementById("editor_publish_form");
 		if (!form) return;
 
 		form.classList.add("htmx-request");
 
 		const data = new FormData(form);
-		formAppendSource(data, editor)
+		await formAppendSnippetData(data, editor)
 
 		const res = await fetch("/api/snippet", {
 			method: "POST",
@@ -229,7 +223,7 @@ async function init() {
 	}
 
 	function initPublishForm(editor) {
-		const form = document.getElementById("editor-publish-form");
+		const form = document.getElementById("editor_publish_form");
 		if (!form) return;
 
 		async function onSubmit(e) {
@@ -243,7 +237,7 @@ async function init() {
 	}
 
 	function initUploadButton(editor) {
-		const uploadButton = document.getElementById("upload-button");
+		const uploadButton = document.getElementById("upload_button");
 		if (!uploadButton) return;
 
 		const params = new URLSearchParams(new URL(window.location.href).search);
@@ -255,7 +249,7 @@ async function init() {
 
 		async function uploadChanges() {
 			const data = new FormData();
-			formAppendSource(data, editor)
+			await formAppendSnippetData(data, editor)
 
 			const res = await fetch(`/api/snippet?id=${snippetId}`, {
 				method: "PATCH",
@@ -275,8 +269,8 @@ async function init() {
 }
 
 function initDisplayWindow(emu, editor) {
-	const win = document.getElementById("display-window");
-	const zoomButton = document.getElementById("display-zoom-button");
+	const win = document.getElementById("display_window");
+	const zoomButton = document.getElementById("display_zoom_button");
 
 	const PADDING = 40;
 	let pos = { x: PADDING, y: PADDING };
@@ -354,18 +348,27 @@ function initDisplayWindow(emu, editor) {
 	return win;
 }
 
-function formAppendSource(formData, editor) {
+async function formAppendSnippetData(formData, editor) {
+	if (!previewUrl) {
+		setErrorPopup("No image preview, try again");
+		return;
+	}
+
 	const value = editor.getValue().trim();
-	const blob = new Blob([value], {
+	const sourceBlob = new Blob([value], {
 		type: "text/plain; charset=utf-8"
 	});
 
-	formData.append("file", blob, "source.smal");
+	const res = await fetch(previewUrl);
+	const previewBlob = await res.blob();
+
+	formData.append("file", sourceBlob, "source.smal");
+	formData.append("preview", previewBlob, "preview.png");
 }
 
 function setLoadingText(text) {
 	const loader = document.getElementById("loader");
-	const loaderText = document.getElementById("loader-text");
+	const loaderText = document.getElementById("loader_text");
 
 	if (!text) {
 		loader.classList.add("hidden");
@@ -375,5 +378,22 @@ function setLoadingText(text) {
 	loaderText.textContent = text;
 	loader.classList.remove("hidden");
 }
+
+function togglePublishModal() {
+	if (!publishModal.classList.contains("open")) {
+		reloadPublishPreview();
+	}
+
+	publishModal.classList.toggle("open");
+}
+
+function reloadPublishPreview() {
+	const previewImg = document.getElementById("editor_publish_preview");
+	previewUrl = emu.screen.display.toDataURL();
+	previewImg.src = previewUrl;
+}
+
+window.togglePublishModal = togglePublishModal;
+window.reloadPublishPreview = reloadPublishPreview;
 
 document.addEventListener("DOMContentLoaded", init);

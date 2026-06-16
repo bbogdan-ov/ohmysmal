@@ -1,9 +1,9 @@
 /*M!999999\- enable the sandbox mode */ 
--- MariaDB dump 10.19-12.2.2-MariaDB, for Linux (x86_64)
+-- MariaDB dump 10.19-12.3.2-MariaDB, for Linux (x86_64)
 --
 -- Host: localhost    Database: ohmysmal
 -- ------------------------------------------------------
--- Server version	12.2.2-MariaDB
+-- Server version	12.3.2-MariaDB
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -34,7 +34,7 @@ CREATE TABLE `comments` (
   KEY `key_comments_snippet_id` (`snippet_id`),
   CONSTRAINT `fk_comments_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_snippet_id` FOREIGN KEY (`snippet_id`) REFERENCES `snippets` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -48,7 +48,8 @@ DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_comment_insert
 AFTER INSERT ON comments
 FOR EACH ROW
-        UPDATE snippets SET comments=comments+1 WHERE id=NEW.snippet_id */;;
+        UPDATE snippets SET comments=comments+1 WHERE id=NEW.snippet_id 
+*/;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -66,7 +67,8 @@ DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_comment_delete
 AFTER DELETE ON comments
 FOR EACH ROW
-	UPDATE snippets SET comments=comments-1 WHERE id=OLD.snippet_id */;;
+	UPDATE snippets SET comments=comments-1 WHERE id=OLD.snippet_id 
+*/;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -82,12 +84,12 @@ DROP TABLE IF EXISTS `comments_with_author`;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `comments_with_author` AS SELECT
- 1 AS `id`,
-  1 AS `snippet_id`,
-  1 AS `author_id`,
-  1 AS `text`,
-  1 AS `date`,
-  1 AS `author_nickname` */;
+ NULL AS `id`,
+ NULL AS `snippet_id`,
+ NULL AS `author_id`,
+ NULL AS `text`,
+ NULL AS `date`,
+ NULL AS `author_nickname` */;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -119,7 +121,8 @@ DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_flower_insert
 AFTER INSERT ON flowers
 FOR EACH ROW
-	UPDATE snippets SET flowers=flowers+1 WHERE id=NEW.snippet_id */;;
+	UPDATE snippets SET flowers=flowers+1 WHERE id=NEW.snippet_id 
+*/;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -137,7 +140,8 @@ DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_flower_delete
 AFTER DELETE ON flowers
 FOR EACH ROW
-	UPDATE snippets SET flowers=flowers-1 WHERE id=OLD.snippet_id */;;
+	UPDATE snippets SET flowers=flowers-1 WHERE id=OLD.snippet_id 
+*/;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -163,6 +167,44 @@ CREATE TABLE `reports` (
   CONSTRAINT `fk_reports_snippet_id` FOREIGN KEY (`snippet_id`) REFERENCES `snippets` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_uca1400_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_report_insert
+AFTER INSERT ON reports
+FOR EACH ROW
+        UPDATE snippets SET reports=reports+1 WHERE id=NEW.snippet_id 
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_uca1400_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER after_report_delete
+AFTER DELETE ON reports
+FOR EACH ROW
+        UPDATE snippets SET reports=reports-1 WHERE id=OLD.snippet_id 
+*/;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `snippets`
@@ -180,6 +222,7 @@ CREATE TABLE `snippets` (
   `status` enum('ok','deleted') NOT NULL DEFAULT 'ok',
   `date` timestamp NOT NULL DEFAULT current_timestamp(),
   `remix_of` binary(16) DEFAULT NULL,
+  `reports` int(10) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `key_snippets_author_id` (`author_id`),
   KEY `key_snippets_remix_of` (`remix_of`),
@@ -197,15 +240,16 @@ DROP TABLE IF EXISTS `snippets_with_author`;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `snippets_with_author` AS SELECT
- 1 AS `id`,
-  1 AS `author_id`,
-  1 AS `title`,
-  1 AS `flowers`,
-  1 AS `comments`,
-  1 AS `status`,
-  1 AS `date`,
-  1 AS `remix_of`,
-  1 AS `author_nickname` */;
+ NULL AS `id`,
+ NULL AS `author_id`,
+ NULL AS `title`,
+ NULL AS `flowers`,
+ NULL AS `comments`,
+ NULL AS `status`,
+ NULL AS `date`,
+ NULL AS `remix_of`,
+ NULL AS `reports`,
+ NULL AS `author_nickname` */;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -223,7 +267,7 @@ CREATE TABLE `users` (
   `status` enum('ok','banned') NOT NULL DEFAULT 'ok',
   `register_date` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -240,7 +284,8 @@ FOR EACH ROW
 BEGIN
 	UPDATE snippets SET flowers=flowers-1 WHERE id IN (SELECT snippet_id FROM flowers WHERE user_id = OLD.id);
 	UPDATE snippets SET comments=comments-1 WHERE id IN (SELECT snippet_id FROM comments WHERE author_id = OLD.id);
-END */;;
+END 
+*/;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -256,12 +301,12 @@ DROP TABLE IF EXISTS `users_with_enums`;
 SET @saved_cs_client     = @@character_set_client;
 SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `users_with_enums` AS SELECT
- 1 AS `id`,
-  1 AS `nickname`,
-  1 AS `password`,
-  1 AS `role`,
-  1 AS `status`,
-  1 AS `register_date` */;
+ NULL AS `id`,
+ NULL AS `nickname`,
+ NULL AS `password`,
+ NULL AS `role`,
+ NULL AS `status`,
+ NULL AS `register_date` */;
 SET character_set_client = @saved_cs_client;
 
 --
@@ -295,7 +340,7 @@ SET character_set_client = @saved_cs_client;
 /*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `snippets_with_author` AS select `snippets`.`id` AS `id`,`snippets`.`author_id` AS `author_id`,`snippets`.`title` AS `title`,`snippets`.`flowers` AS `flowers`,`snippets`.`comments` AS `comments`,`snippets`.`status` + 0 AS `status`,`snippets`.`date` AS `date`,`snippets`.`remix_of` AS `remix_of`,`users`.`nickname` AS `author_nickname` from (`snippets` join `users` on(`snippets`.`author_id` = `users`.`id`)) */;
+/*!50001 VIEW `snippets_with_author` AS select `snippets`.`id` AS `id`,`snippets`.`author_id` AS `author_id`,`snippets`.`title` AS `title`,`snippets`.`flowers` AS `flowers`,`snippets`.`comments` AS `comments`,`snippets`.`status` + 0 AS `status`,`snippets`.`date` AS `date`,`snippets`.`remix_of` AS `remix_of`,`snippets`.`reports` AS `reports`,`users`.`nickname` AS `author_nickname` from (`snippets` join `users` on(`snippets`.`author_id` = `users`.`id`)) */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -327,4 +372,4 @@ SET character_set_client = @saved_cs_client;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-06-13 17:46:39
+-- Dump completed on 2026-06-17  0:42:35

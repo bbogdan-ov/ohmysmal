@@ -17,7 +17,7 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 		@pageBody() {
 			<div class="editor-page">
 				<div class="editor-container">
-					<textarea id="snippet-source">{snippetSource}</textarea>
+					<textarea id="snippet_source">{snippetSource}</textarea>
 
 					@editorStatusbar(user, snippet)
 				</div>
@@ -26,13 +26,13 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 					if snippet.Ok {
 						@editorSnippetInfo(snippet.Snippet)
 					}
-					<div id="editor-problems">
+					<div id="editor_problems">
 					</div>
 				</div>
 
-				<div id="display-window" tabindex="1">
+				<div id="display_window" tabindex="1">
 					<div class="display-stats text-small">
-						<span id="display-zoom-button" class="link-ish">x1</span>
+						<span id="display_zoom_button" class="link-ish">x1</span>
 					</div>
 					<canvas id="display" class="uxn-canvas"></canvas>
 				</div>
@@ -43,7 +43,7 @@ templ EditorPage(user server.MaybeUser, snippet server.MaybeSnippet, snippetSour
 			}
 
 			<div id="loader">
-				<span id="loader-text">/**/</span>
+				<span id="loader_text">/**/</span>
 			</div>
 
 			@uxnScripts()
@@ -74,12 +74,16 @@ templ editorStatusbar(user server.MaybeUser, snippet server.MaybeSnippet) {
 		<div class="row gap-2">
 			<a href="/" class="link-ish">@icon("home") home</a>
 
-			<span id="run-button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
+			<span id="run_button" class="link-ish" title="[Ctrl-Enter] Compile and run">run</span>
 
 			if user.Ok && snippet.Ok && snippet.AuthorId == user.Id {
-				<span id="upload-button" class="link-ish" >upload changes</span>
+				<span id="upload_button" class="link-ish">upload changes</span>
 			} else if user.Ok {
-				<span id="publish-button" class="link-ish">publish</span>
+				<span
+					id="publish_button"
+					class="link-ish"
+					onclick="togglePublishModal()"
+				>publish</span>
 			}
 		</div>
 
@@ -88,25 +92,33 @@ templ editorStatusbar(user server.MaybeUser, snippet server.MaybeSnippet) {
 				<span class="muted">{"@"}{user.Nickname}</span>
 			}
 
-			<span id="editor-stats" class="muted">/**/</span>
+			<span id="editor_stats" class="muted">/**/</span>
 		</div>
 	</div>
 }
 
 templ editorPublishModal(user server.User) {
-	<div class="publish-modal" id="editor-publish-modal">
-		<form
-			id="editor-publish-form"
-			class="form"
-		>
-			<textarea
-				name="title"
-				placeholder="My great snippet..."
-				required
-				maxlength={consts.MAX_SNIPPET_TITLE_LEN}
-			></textarea>
-			<button class="button" type="submit">publish as {user.Nickname}!</button>
-		</form>
+	<div class="publish-modal" id="editor_publish_modal">
+		<div class="modal-content">
+			<form id="editor_publish_form">
+				<div class="width-fill row justify-end align-center gap-2 text-small muted">
+					<span class="link-ish" title="[Ctrl-P] Reload the snippet preview">reload preview</span>
+					<span
+						class="link-ish"
+						onclick="togglePublishModal()"
+					>close</span>
+				</div>
+
+				<div class="snippet-preview">
+					<img id="editor_publish_preview" src="" alt="Preview of the snippet" />
+				</div>
+
+				<div class="col gap-2 width-fill">
+					<span class="text-small muted">you are {"@"}{user.Nickname}</span>
+					@FunkyTextarea("title", "My great snippet...", consts.MAX_SNIPPET_TITLE_LEN)
+				</div>
+			</form>
+		</div>
 	</div>
 }
 

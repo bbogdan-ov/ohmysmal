@@ -63,6 +63,8 @@ func main() {
 
 	static := http.Dir("static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(static)))
+	snippets := http.Dir("snippets")
+	http.Handle("/snippets/", http.StripPrefix("/snippets/", http.FileServer(snippets)))
 
 	addr := fmt.Sprintf(":%s", port)
 

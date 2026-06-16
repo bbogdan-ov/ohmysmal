@@ -371,8 +371,6 @@ func (h Handler) HandleApiSnippet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		err = h.handlePostApiSnippet(w, r)
-	case "GET":
-		err = h.handleGetApiSnippet(w, r)
 	case "DELETE":
 		err = h.handleDeleteApiSnippet(w, r)
 	case "PATCH":
@@ -406,27 +404,26 @@ func (h Handler) handlePostApiSnippet(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	id, err := server.PostSnippet(h.db, r.Context(), user, title, file, header)
+	previewFile, previewHeader, err := r.FormFile("preview")
+	if err != nil {
+		return err
+	}
+
+	id, err := server.PostSnippet(
+		h.db,
+		r.Context(),
+		user,
+		title,
+		file,
+		header,
+		previewFile,
+		previewHeader,
+	)
 	if err != nil {
 		return err
 	}
 
 	w.Write([]byte(fmt.Sprintf("%s", id)))
-	return nil
-}
-
-func (h Handler) handleGetApiSnippet(w http.ResponseWriter, r *http.Request) error {
-	id, err := UUIDQueryGet(r, "id")
-	if err != nil {
-		return err
-	}
-
-	_, source, err := server.SnippetSource(h.db, r.Context(), id)
-	if err != nil {
-		return err
-	}
-
-	w.Write([]byte(source))
 	return nil
 }
 

@@ -6,7 +6,7 @@ const DEFAULT_CODE = `\
 
 // Note that UXNSMAL is VERY INCOMPLETE!
 // Anything could be changed without any notice.
-// These is also no documentation, you're on your own.
+// There is also no documentation, you're on your own.
 // Good luck.
 //
 // http://github.com/bbogdan-ov/uxnsmal
@@ -14,8 +14,52 @@ const DEFAULT_CODE = `\
 // Hot keys:
 //     Ctrl-Enter - Compile and run
 
+// This vector function is the entry point of your program.
 fun on-reset ( -> ) {
-	// The entry point...
+	// Setting the screen size to 128 by 128 pixels.
+	128* Screen.width output
+	128* Screen.height output
+
+	// Setup the palette.
+	// The first color is the background of our screen.
+	// Our palette looks like this:
+	//     #fff, #000, #7db, #f62
+	// You can read more here:
+	//     https://wiki.xxiivv.com/site/varvara.html#system
+	0xf07f* System.red output
+	0xf0d6* System.green output
+	0xf0b2* System.blue output
+
+	// Placing the sprite at 16, 28 pixels
+	// from top left corner of the screen.
+	16* Screen.x output
+	28* Screen.y output
+	// Setting the sprite data to draw.
+	&smiley Screen.addr output
+	// Drawing the sprite using the 4th color in the palette.
+	0b00000011 Screen.sprite output
+
+	// Setting the top-left corner of the fill at 64, 64.
+	64* Screen.x output
+	64* Screen.y output
+	// Fill the screen with the 3rd color in palette
+	// to the bottom-right corner of the screen.
+	0b10000010 Screen.pixel output
+
+	// A better explanation here:
+	//     https://wiki.xxiivv.com/site/varvara.html#screen
+}
+
+// Try playing with ones and zeros!
+data smiley {
+	0b01111110
+	0b11111111
+	0b10111101
+	0b10111101
+	0b11111111
+	0b10111101
+	0b11000011
+	0b01111110
 }
 
 // Here is all the devices you need to start doing things:

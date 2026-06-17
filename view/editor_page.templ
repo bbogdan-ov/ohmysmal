@@ -117,7 +117,7 @@ templ editorPublishModal(user server.User) {
 					<img id="editor_publish_preview" src="" alt="Preview of the snippet" />
 				</div>
 
-				<div class="col gap-2 width-fill">
+				<div class="flex-column gap-2 width-fill">
 					<span class="text-small muted">you are {"@"}{user.Nickname}</span>
 					@FunkyTextarea("title", "My great snippet...", consts.MAX_SNIPPET_TITLE_LEN)
 				</div>

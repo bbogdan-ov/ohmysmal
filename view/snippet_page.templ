@@ -261,6 +261,16 @@ templ snippetReportsList(reports []server.Report) {
 	}
 }
 
+templ violationRadio(value, title, description string) {
+	<label class="radio-label">
+		<input type="radio" name="violation" value={value} required />
+		<div class="col gap-1">
+			<b>{title}</b>
+			<p>{description}</p>
+		</div>
+	</label>
+}
+
 templ snippetReportForm(snippetId uuid.UUID) {
 	<form
 		id="snippet-report"
@@ -270,15 +280,15 @@ templ snippetReportForm(snippetId uuid.UUID) {
 		hx-on::after-request="if (event.detail.successful) location.reload()"
 	>
 		<div class="report-form-content">
-			<select name="violation" required>
-				<option selected disabled>Violation</option>
-				<option value="spam">Spam</option>
-				<option value="politics">Politics</option>
-				<option value="shocking">Shocking content</option>
-				<option value="hatred">Hatred</option>
-				<option value="porn">Porn</option>
-			</select>
-			<button type="submit" class="button">submit</button>
+			<div class="radio-group">
+				@violationRadio("spam", "Spam", "The exact same snippet was posted more than once.")
+				@violationRadio("politics", "Politics", "Any polical statement is present in the snippet.")
+				@violationRadio("shocking", "Shocking content", "This snippet makes me uncomfortable.")
+				@violationRadio("hatred", "Hatred", "Hate to a person or a group of people.")
+				@violationRadio("porn", "Porn", "Pornographic or NSFW (not safe for work) content.")
+			</div>
+
+			<button type="submit" class="button" style="margin-top: 1rem;">submit</button>
 		</div>
 	</form>
 }

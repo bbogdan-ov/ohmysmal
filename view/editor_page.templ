@@ -102,7 +102,11 @@ templ editorPublishModal(user server.User) {
 		<div class="modal-content">
 			<form id="editor_publish_form">
 				<div class="width-fill row justify-end align-center gap-2 text-small muted">
-					<span class="link-ish" title="[Ctrl-P] Reload the snippet preview">reload preview</span>
+					<span
+						class="link-ish"
+						title="[Ctrl-P] Reload the snippet preview"
+						onclick="reloadPublishPreview()"
+					>reload preview</span>
 					<span
 						class="link-ish"
 						onclick="togglePublishModal()"

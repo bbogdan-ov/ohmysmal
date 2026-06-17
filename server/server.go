@@ -1,8 +1,8 @@
 package server
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 )
@@ -14,6 +14,13 @@ type BadRequestError struct {
 
 func (e BadRequestError) Error() string {
 	return e.Message
+}
+
+type AdminPanelStats struct {
+	UsersCount    int
+	SnippetsCount int
+	FlowersCount  int
+	CommentsCount int
 }
 
 func ConnectDatabase(username, password string) *sql.DB {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
@@ -8,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
@@ -180,9 +182,12 @@ func (h Handler) HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
 	snippets := make([]server.Snippet, 0, 20)
 
-	rows, err := h.db.Query(`
+	rows, err := h.db.QueryContext(ctx, `
 		SELECT *
 		FROM snippets_with_author
 		WHERE reports > 0
@@ -220,7 +225,22 @@ func (h Handler) HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
 		snippets = append(snippets, s)
 	}
 
-	v := templ.Handler(view.AdminPanelPage(user, snippets))
+	// Request stats.
+	var stats server.AdminPanelStats
+
+	row := h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM users WHERE status = 'ok'`)
+	row.Scan(&stats.UsersCount)
+
+	row = h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM snippets WHERE status = 'ok'`)
+	row.Scan(&stats.SnippetsCount)
+
+	row = h.db.QueryRowContext(ctx, `SELECT COUNT(snippet_id) FROM flowers`)
+	row.Scan(&stats.FlowersCount)
+
+	row = h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM comments`)
+	row.Scan(&stats.CommentsCount)
+
+	v := templ.Handler(view.AdminPanelPage(user, snippets, stats))
 	v.ServeHTTP(w, r)
 }
 

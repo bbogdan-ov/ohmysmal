@@ -6,14 +6,15 @@ import (
 	"ohmysmal/server"
 )
 
-templ AdminPanelPage(user server.User, snippets []server.Snippet) {
+templ AdminPanelPage(user server.User, snippets []server.Snippet, stats server.AdminPanelStats) {
 	{{ maybeUser := server.MaybeUser{User: user, Ok: true} }}
 
 	@page() {
 		@pageHead("admin panel")
 		@pageBody() {
-			<div class="container">
+			<div class="container panel-container">
 				@header(maybeUser)
+				@panelStats(stats)
 				@reportedSnippetsTable(snippets)
 				@footer()
 			</div>
@@ -21,24 +22,51 @@ templ AdminPanelPage(user server.User, snippets []server.Snippet) {
 	}
 }
 
-templ reportedSnippetsTable(snippets []server.Snippet) {
-	<h2 style="margin-top: 2rem; margin-bottom: 1rem;">Reported snippets</h2>
+templ panelStats(stats server.AdminPanelStats) {
+	<div class="panel-stats">
+		<div class="stat">
+			<img src="/static/images/users-stat.png" alt="" />
+			<span class="stat-number">{stats.UsersCount}</span>
+			<span>users</span>
+		</div>
+		<div class="stat">
+			<img src="/static/images/snippets-stat.png" alt="" />
+			<span class="stat-number">{stats.SnippetsCount}</span>
+			<span>snippets</span>
+		</div>
+		<div class="stat">
+			<img src="/static/images/flowers-stat.png" alt="" />
+			<span class="stat-number">{stats.FlowersCount}</span>
+			<span>flowers</span>
+		</div>
+		<div class="stat">
+			<img src="/static/images/comments-stat.png" alt="" />
+			<span class="stat-number">{stats.CommentsCount}</span>
+			<span>comments</span>
+		</div>
+	</div>
+}
 
-	<table>
-		<tr>
-			<th>#</th>
-			<th>Snippet</th>
-			<th>Reports</th>
-		</tr>
-		for idx, s := range snippets {
+templ reportedSnippetsTable(snippets []server.Snippet) {
+	<div class="flex-column gap-2">
+		<h2>Reported snippets</h2>
+
+		<table>
 			<tr>
-				<td class="muted">{idx + 1}</td>
-				<td>
-					<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
-					<span class="muted">{"@"}{s.AuthorNickname}</span>
-				</td>
-				<td>{s.Reports}</td>
+				<th>#</th>
+				<th>Snippet</th>
+				<th>Reports</th>
 			</tr>
-		}
-	</table>
+			for idx, s := range snippets {
+				<tr>
+					<td class="muted">{idx + 1}</td>
+					<td>
+						<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
+						<span class="muted">{"@"}{s.AuthorNickname}</span>
+					</td>
+					<td>{s.Reports}</td>
+				</tr>
+			}
+		</table>
+	</div>
 }

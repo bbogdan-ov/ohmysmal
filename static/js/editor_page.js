@@ -293,7 +293,7 @@ async function init() {
 
 		async function uploadChanges() {
 			const data = new FormData();
-			await formAppendSnippetData(data, editor)
+			await formAppendSnippetData(data, editor, false);
 
 			const res = await fetch(`/api/snippet?id=${snippetId}`, {
 				method: "PATCH",
@@ -305,6 +305,7 @@ async function init() {
 				return;
 			}
 
+			changed = false;
 			window.location.replace(`/snippet?id=${snippetId}`);
 		}
 
@@ -392,8 +393,8 @@ function initDisplayWindow(emu, editor) {
 	return win;
 }
 
-async function formAppendSnippetData(formData, editor) {
-	if (!previewUrl) {
+async function formAppendSnippetData(formData, editor, includePreview = true) {
+	if (includePreview && !previewUrl) {
 		setErrorPopup("No image preview, try again");
 		return;
 	}
@@ -403,11 +404,13 @@ async function formAppendSnippetData(formData, editor) {
 		type: "text/plain; charset=utf-8"
 	});
 
-	const res = await fetch(previewUrl);
-	const previewBlob = await res.blob();
-
 	formData.append("file", sourceBlob, "source.smal");
-	formData.append("preview", previewBlob, "preview.png");
+
+	if (includePreview) {
+		const res = await fetch(previewUrl);
+		const previewBlob = await res.blob();
+		formData.append("preview", previewBlob, "preview.png");
+	}
 }
 
 function setLoadingText(text) {

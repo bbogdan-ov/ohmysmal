@@ -10,13 +10,15 @@ templ HomePage(user server.MaybeUser, snippets []server.Snippet, splash string) 
 	@page() {
 		@pageHead("home")
 		@pageBody() {
-			<div class="container">
+			<div class="container gap-4">
 				@header(user)
 
-				<div class="welcome-logo"></div>
-				<i class="text-center text-yellow">— {splash} —</i>
+				<div class="flex-column">
+					<div class="welcome-logo"></div>
+					<i class="text-center text-yellow">— {splash} —</i>
+				</div>
 
-				@feed(snippets)
+				@Feed(snippets)
 
 				@footer()
 			</div>
@@ -24,14 +26,14 @@ templ HomePage(user server.MaybeUser, snippets []server.Snippet, splash string) 
 	}
 }
 
-templ feed(snippets []server.Snippet) {
+templ Feed(snippets []server.Snippet) {
 	<div class="feed" role="feed">
 		for _, s := range snippets {
-			@snippet(s)
+			@Snippet(s)
 		}
 	</div>
 }
-templ snippet(s server.Snippet) {
+templ Snippet(s server.Snippet) {
 	<article class="snippet">
 		<a class="snippet-preview" href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>
 			<img
@@ -46,7 +48,7 @@ templ snippet(s server.Snippet) {
 
 		<p>
 			<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
-			<span class="muted">{"@"}{s.AuthorNickname}</span>
+			<span class="muted">@Nickname(s.AuthorNickname, "")</span>
 		</p>
 
 		<div class="snippet-info row width-fill justify-between">

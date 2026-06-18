@@ -16,7 +16,7 @@ func (e BadRequestError) Error() string {
 	return e.Message
 }
 
-type AdminPanelStats struct {
+type WebsiteStats struct {
 	UsersCount    int
 	SnippetsCount int
 	FlowersCount  int

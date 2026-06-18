@@ -1,0 +1,47 @@
+package view
+
+import (
+	"fmt"
+
+	"ohmysmal/server"
+)
+
+templ UserPage(
+	authed server.MaybeUser,
+	user server.User,
+	snippets []server.Snippet,
+	stats server.WebsiteStats,
+) {
+	@page() {
+		@pageHead(fmt.Sprintf("@%s", user.Nickname))
+		@pageBody() {
+			<div class="container gap-4">
+				@header(authed)
+
+				<div class="user-info-wrapper">
+					<div class="user-info">
+						<h2>{"@"}{user.Nickname}</h2>
+						<span class="muted">
+							Registered&#160;
+							@TimeAgo(user.RegisterDate, "")
+						</span>
+					</div>
+				</div>
+
+				<div class="website-stats three">
+					@WebsiteStat(stats.SnippetsCount, "snippets", "snippets-stat.png")
+					@WebsiteStat(stats.FlowersCount, "flowers", "flowers-stat.png")
+					@WebsiteStat(stats.CommentsCount, "comments", "comments-stat.png")
+				</div>
+
+				<hr />
+
+				<h2>{user.Nickname}'s snippets</h2>
+
+				@Feed(snippets)
+
+				@footer()
+			</div>
+		}
+	}
+}

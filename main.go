@@ -46,7 +46,7 @@ func main() {
 	h := handler.New(db, cache, store)
 
 	// Handle routes.
-	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleHome))
+	http.HandleFunc("/", h.UserCacheMiddleware(h.HandleRoot))
 	http.HandleFunc("/editor", h.UserCacheMiddleware(h.HandleEditor))
 	http.HandleFunc("/snippet", h.UserCacheMiddleware(h.HandleSnippet))
 	http.HandleFunc("/panel", h.UserCacheMiddleware(h.HandleAdminPanel))

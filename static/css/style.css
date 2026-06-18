@@ -92,7 +92,6 @@ body {
 /* -------------------- */
 
 .feed {
-	padding-block: 2rem;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 	gap: 2rem;
@@ -525,49 +524,72 @@ div.CodeMirror-selected { background: var(--selection) !important; }
 	gap: 2rem;
 }
 
-.panel-stats {
+.website-stats {
 	width: 100%;
 
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
 	gap: 1rem;
 
-	.stat {
-		width: 100%;
-		min-height: 200px;
-		padding-top: 1rem;
+	&.three {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+.website-stat {
+	width: 100%;
+	min-height: 200px;
+	padding-top: 1rem;
 
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		overflow: hidden;
+	text-align: center;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow: hidden;
 
-		background: var(--dark);
-		border-radius: 2px;
+	background: var(--dark);
+	border-radius: 2px;
 
-		.stat-number {
-			font-size: 2rem;
-			font-family: var(--title-font);
-		}
-		> img {
-			position: absolute;
-			left: 50%;
-			bottom: 0;
-			translate: -50% 0;
-		}
+	.stat-number {
+		font-size: 2rem;
+		font-family: var(--title-font);
+	}
+	> img {
+		position: absolute;
+		left: 50%;
+		bottom: 0;
+		translate: -50% 0;
 	}
 }
 
 @media screen and (max-width: 650px) {
-	.panel-stats {
-		grid-template-columns: repeat(2, 1fr);
+	.website-stats {
+		grid-template-columns: repeat(2, 1fr) !important;
 	}
 }
 @media screen and (max-width: 360px) {
-	.panel-stats {
-		grid-template-columns: 1fr;
+	.website-stats {
+		grid-template-columns: 1fr !important;
 	}
+}
+
+/* -------------------- */
+/* User page */
+/* -------------------- */
+
+.user-info-wrapper {
+	padding: 0.5rem;
+
+	border-radius: 2px;
+	background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAAAD+Fb1AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAAd0SU1FB+oEChMbFqK0twIAAAAYSURBVAjXY+hoYGDoaGBgYIBQHQ0MGCIAlMQIQTlXEfYAAAAASUVORK5CYII=);
+}
+.user-info {
+	padding: 1rem;
+
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+
+	background: var(--background);
 }
 
 /* -------------------- */

@@ -88,7 +88,7 @@ templ snippetFoundPage(
 						<h2>{s.Title}</h2>
 						@TimeAgo(s.Date, "muted text-nowrap")
 					</div>
-					<span>{"@"}{s.AuthorNickname}</span>
+					@Nickname(s.AuthorNickname, "")
 				</div>
 
 				<textarea style="display: none;" id="snippet_source">{source}</textarea>
@@ -210,7 +210,7 @@ templ Comment(user server.MaybeUser, c server.Comment) {
 		@icon("comment")
 		<div class="comment-content">
 			<div class="row muted gap-1 width-fill">
-				{"@"}{c.AuthorNickname}
+				@Nickname(c.AuthorNickname, "")
 				<span>·</span>
 				@TimeAgo(c.Date, "")
 
@@ -255,7 +255,7 @@ templ snippetReportsList(reports []server.Report) {
 	for _, r := range reports {
 		<tr>
 			<td>{server.ViolationStr(r.Violation)}</td>
-			<td>{"@"}{r.AuthorNickname}</td>
+			<td>@Nickname(r.AuthorNickname, "")</td>
 			<td>@TimeAgo(r.Date, "")</td>
 		</tr>
 	}

@@ -6,7 +6,7 @@ import (
 	"ohmysmal/server"
 )
 
-templ AdminPanelPage(user server.User, snippets []server.Snippet, stats server.AdminPanelStats) {
+templ AdminPanelPage(user server.User, snippets []server.Snippet, stats server.WebsiteStats) {
 	{{ maybeUser := server.MaybeUser{User: user, Ok: true} }}
 
 	@page() {
@@ -14,37 +14,20 @@ templ AdminPanelPage(user server.User, snippets []server.Snippet, stats server.A
 		@pageBody() {
 			<div class="container panel-container">
 				@header(maybeUser)
-				@panelStats(stats)
+
+				<div class="website-stats">
+					@WebsiteStat(stats.UsersCount, "users", "users-stat.png")
+					@WebsiteStat(stats.SnippetsCount, "snippets", "snippets-stat.png")
+					@WebsiteStat(stats.FlowersCount, "flowers", "flowers-stat.png")
+					@WebsiteStat(stats.CommentsCount, "comments", "comments-stat.png")
+				</div>
+
 				@reportedSnippetsTable(snippets)
+
 				@footer()
 			</div>
 		}
 	}
-}
-
-templ panelStats(stats server.AdminPanelStats) {
-	<div class="panel-stats">
-		<div class="stat">
-			<img src="/static/images/users-stat.png" alt="" />
-			<span class="stat-number">{stats.UsersCount}</span>
-			<span>users</span>
-		</div>
-		<div class="stat">
-			<img src="/static/images/snippets-stat.png" alt="" />
-			<span class="stat-number">{stats.SnippetsCount}</span>
-			<span>snippets</span>
-		</div>
-		<div class="stat">
-			<img src="/static/images/flowers-stat.png" alt="" />
-			<span class="stat-number">{stats.FlowersCount}</span>
-			<span>flowers</span>
-		</div>
-		<div class="stat">
-			<img src="/static/images/comments-stat.png" alt="" />
-			<span class="stat-number">{stats.CommentsCount}</span>
-			<span>comments</span>
-		</div>
-	</div>
 }
 
 templ reportedSnippetsTable(snippets []server.Snippet) {
@@ -62,7 +45,8 @@ templ reportedSnippetsTable(snippets []server.Snippet) {
 					<td class="muted">{idx + 1}</td>
 					<td>
 						<a href={ fmt.Sprintf("/snippet?id=%s", s.Id) }>{s.Title}</a>
-						<span class="muted">{"@"}{s.AuthorNickname}</span>
+						&#160;
+						@Nickname(s.AuthorNickname, "muted")
 					</td>
 					<td>{s.Reports}</td>
 				</tr>

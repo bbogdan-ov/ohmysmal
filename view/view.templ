@@ -27,6 +27,18 @@ templ TimeAgo(t time.Time, class string) {
 	</span>
 }
 
+templ Nickname(nickname string, class string) {
+	<a class={class} href={ fmt.Sprintf("@%s", nickname) }>{"@"}{nickname}</a>
+}
+
+templ WebsiteStat(count int, label, image string) {
+	<div class="website-stat">
+		<img src={ fmt.Sprintf("/static/images/%s", image) } alt="" />
+		<span class="stat-number">{count}</span>
+		<span>{label}</span>
+	</div>
+}
+
 templ header(user server.MaybeUser) {
 	<header class="header">
 		<div class="row gap-2">
@@ -45,7 +57,7 @@ templ header(user server.MaybeUser) {
 
 		if user.Ok {
 			<div class="row gap-1">
-				<span>{"@"}{user.User.Nickname}</span>
+				@Nickname(user.User.Nickname, "")
 				<span class="link-ish" hx-post="/api/logout" title="Logout">@icon("logout")</span>
 			</div>
 		} else {

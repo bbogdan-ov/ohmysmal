@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/a-h/templ"
 	_ "github.com/go-sql-driver/mysql"
@@ -35,22 +36,27 @@ func New(db *sql.DB, cache *cache.Cache, store *sessions.CookieStore) Handler {
 // Pages.
 // --------------------
 
-func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
+func (h Handler) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	if !EnsureMethod(w, r, "GET") {
 		return
 	}
 
+	if r.URL.Path == "/" {
+		h.handleHome(w, r)
+	} else if strings.HasPrefix(r.URL.Path, "/@") {
+		h.handleUser(w, r)
+	} else {
+		http.Error(w, "not found", http.StatusNotFound)
+	}
+}
+
+func (h Handler) handleHome(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUserOrFalse(session)
 
 	snippets := make([]server.Snippet, 0, 20)
 	err := server.RequestSnippets(h.db, &snippets, user.Id, authed)
 	if err != nil {
-		log.Printf("ERROR: Failed to request a list of snippets: %s", err)
 		ErrorPage(w, r, err)
 		return
 	}
@@ -68,6 +74,52 @@ func (h Handler) HandleHome(w http.ResponseWriter, r *http.Request) {
 	splash := splashes[rand.Int()%len(splashes)]
 
 	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets, splash))
+	v.ServeHTTP(w, r)
+}
+
+func (h Handler) handleUser(w http.ResponseWriter, r *http.Request) {
+	session := h.DefaultSession(r)
+	authed, is_authed := h.authorizedUserOrFalse(session)
+
+	nickname := strings.TrimPrefix(r.URL.Path, "/@")
+
+	user, err := server.RequestUserByNickname(r, h.db, nickname)
+	if err == sql.ErrNoRows {
+		// Simply send the user home.
+		w.Header().Add("Location", "/")
+		w.WriteHeader(http.StatusMovedPermanently)
+		return
+	} else if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	snippets := make([]server.Snippet, 0)
+	err = server.RequestSnippetsAuthored(h.db, ctx, &snippets, user.Id, authed.Id, is_authed)
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	var stats server.WebsiteStats
+
+	row := h.db.QueryRowContext(ctx, `
+		SELECT COUNT(id)
+		FROM snippets
+		WHERE status = 'ok' AND author_id = ?
+	`, user.Id)
+	row.Scan(&stats.SnippetsCount)
+
+	row = h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM comments WHERE author_id = ?`, user.Id)
+	row.Scan(&stats.CommentsCount)
+
+	row = h.db.QueryRowContext(ctx, `SELECT COUNT(user_id) FROM flowers WHERE user_id = ?`, user.Id)
+	row.Scan(&stats.FlowersCount)
+
+	v := templ.Handler(view.UserPage(server.MaybeUser{User: authed, Ok: is_authed}, user, snippets, stats))
 	v.ServeHTTP(w, r)
 }
 
@@ -226,7 +278,7 @@ func (h Handler) HandleAdminPanel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Request stats.
-	var stats server.AdminPanelStats
+	var stats server.WebsiteStats
 
 	row := h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM users WHERE status = 'ok'`)
 	row.Scan(&stats.UsersCount)

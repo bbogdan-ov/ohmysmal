@@ -443,6 +443,54 @@ func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUs
 	return nil
 }
 
+func RequestSnippetsAuthored(
+	db *sql.DB,
+	ctx context.Context,
+	snippets *[]Snippet,
+	authorId uint,
+	authUserId uint,
+	hasAuthUser bool,
+) (err error) {
+	// Select all snippets and add a new column "flowered" that indicates
+	// wheter a user with id `authUserId` flowered this snippet.
+	const QUERY = `
+		SELECT
+			snippets_with_author.*,
+			(flowers.user_id IS NOT NULL) as flowered
+		FROM snippets_with_author
+		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
+		WHERE author_id = ?
+		ORDER BY date DESC
+	`
+
+	var rows *sql.Rows
+	if hasAuthUser {
+		rows, err = db.QueryContext(ctx, QUERY, authUserId, authorId)
+	} else {
+		rows, err = db.QueryContext(ctx, QUERY, nil, authorId)
+	}
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var s Snippet
+	for {
+		if !rows.Next() {
+			break
+		}
+
+		err = RowsScanSnippet(rows, &s)
+		if err != nil {
+			return err
+		}
+
+		*snippets = append(*snippets, s)
+	}
+
+	return nil
+}
+
 func RequestSnippet(
 	db *sql.DB,
 	ctx context.Context,

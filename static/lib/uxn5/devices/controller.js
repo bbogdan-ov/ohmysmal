@@ -10,7 +10,10 @@ function Controller(emu)
 	}
 
 	this.on_keybutton = (event) => {
-		if (emu.screen.display.parentElement !== document.activeElement) return;
+		if (
+			emu.screen.display.parentElement !== document.activeElement
+			&& emu.screen.display !== document.activeElement
+		) return;
 
 		event.preventDefault();
 

@@ -925,14 +925,14 @@ label > span {
 }
 
 select {
-	padding: .25em .5em;
+	padding: .4em 0;
 
 	font-family: var(--font);
 	font-size: 1rem;
-	background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAQAAAAD+Fb1AAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAd0SU1FB+oGEBIKAq8RzsMAAAAYSURBVAjXY1D6z8Cg9J+BgYGBQQmCMUQAb3AFDdTK0jgAAAAASUVORK5CYII=);
-	border: 1px solid var(--muted);
+	background: transparent;
+	border: none;
+	border-bottom: 1px dotted var(--text-color);
 	color: var(--white);
-	border-radius: 2px;
 	font-weight: 500;
 
 	cursor: pointer;
@@ -979,6 +979,9 @@ button.link-ish {
 	&.icon-editor      { --icon-index: 7; }
 	&.icon-lil-flower  { --icon-index: 8; }
 	&.icon-lil-comment { --icon-index: 9; }
+	&.icon-asc         { --icon-index: 10; }
+	&.icon-desc        { --icon-index: 11; }
+	&.icon-magnifier   { --icon-index: 12; }
 
 	background-position: calc(var(--icon-index) * -1 * var(--icon-size)) 0;
 }

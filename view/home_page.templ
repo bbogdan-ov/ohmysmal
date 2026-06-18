@@ -4,9 +4,15 @@ import (
 	"fmt"
 
 	"ohmysmal/server"
+	"ohmysmal/consts"
 )
 
-templ HomePage(user server.MaybeUser, snippets []server.Snippet, splash string) {
+templ HomePage(
+	user server.MaybeUser,
+	snippets []server.Snippet,
+	splash string,
+	sort, order, search string,
+) {
 	@page() {
 		@pageHead("home")
 		@pageBody() {
@@ -18,20 +24,92 @@ templ HomePage(user server.MaybeUser, snippets []server.Snippet, splash string) 
 					<i class="text-center text-yellow">— {splash} —</i>
 				</div>
 
+				@feedFilter(sort, order, search)
+
 				@Feed(snippets)
 
 				@footer()
+
+				<script>
+					document.addEventListener("DOMContentLoaded", () => {
+						const scroll = sessionStorage.getItem("scroll") ?? 0;
+						window.scrollTo(0, scroll);
+					})
+					addEventListener("beforeunload", () => {
+						sessionStorage.setItem("scroll", window.scrollY);
+					});
+				</script>
 			</div>
 		}
 	}
 }
 
-templ Feed(snippets []server.Snippet) {
-	<div class="feed" role="feed">
-		for _, s := range snippets {
-			@Snippet(s)
+templ feedFilter(sort, order, search string) {
+	<form class="width-fill row gap-2" action="/" method="GET">
+		<input
+			value={search}
+			type="text"
+			name="search"
+			placeholder="Search snippet..."
+			maxlength={consts.MAX_SNIPPET_TITLE_LEN}
+			style="max-width: 300px;"
+		/>
+		<select
+			name="sort"
+			onchange="this.form.submit()"
+		>
+			@filterSortOption(sort, "date", "Date")
+			@filterSortOption(sort, "comments", "Comments")
+			@filterSortOption(sort, "flowers", "Flowers")
+			@filterSortOption(sort, "title", "Title")
+			@filterSortOption(sort, "author", "Author")
+		</select>
+
+		<button
+			class="link-ish"
+			type="submit"
+			name="order"
+			if order == "asc" {
+				value="desc"
+				title="From smallest to largest"
+			} else {
+				value="asc"
+				title="From largest to smallest"
+			}
+		>
+			if order == "asc" {
+				@icon("asc")
+			} else {
+				@icon("desc")
+			}
+		</button>
+
+		<button
+			class="link-ish"
+			type="submit"
+			style="margin-left: auto;"
+		>@icon("magnifier")</button>
+	</form>
+}
+templ filterSortOption(sort, value, text string) {
+	<option
+		if sort == value {
+			selected
 		}
-	</div>
+		value={value}
+	>{text}</option>
+}
+
+templ Feed(snippets []server.Snippet) {
+	if len(snippets) == 0 {
+		<i class="text-center">no results</i>
+	} else {
+		<div class="feed" role="feed">
+			for _, s := range snippets {
+				@Snippet(s)
+			}
+		</div>
+	}
 }
 templ Snippet(s server.Snippet) {
 	<article class="snippet">

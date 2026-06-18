@@ -403,23 +403,45 @@ func DeleteSnippetReports(
 // Request.
 // --------------------
 
-func RequestSnippets(db *sql.DB, snippets *[]Snippet, authUserId uint, hasAuthUser bool) (err error) {
+func RequestSnippets(
+	db *sql.DB,
+	snippets *[]Snippet,
+	authUserId uint,
+	hasAuthUser bool,
+	sort, order, search string,
+) (err error) {
 	// Select all snippets and add a new column "flowered" that indicates
 	// wheter a user with id `authUserId` flowered this snippet.
-	const QUERY = `
+	query := `
 		SELECT
 			snippets_with_author.*,
 			(flowers.user_id IS NOT NULL) as flowered
 		FROM snippets_with_author
 		LEFT JOIN flowers ON id = flowers.snippet_id AND flowers.user_id = ?
-		ORDER BY date DESC
+		WHERE INSTR(title, ?) > 0 OR INSTR(author_nickname, ?) > 0
 	`
+
+	switch order {
+	case "desc", "asc":
+	default:
+		order = "desc"
+	}
+
+	switch sort {
+	case "date", "comments", "flowers", "title":
+	case "author":
+		sort = "author_nickname"
+	default:
+		sort = "date"
+	}
+
+	query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
 
 	var rows *sql.Rows
 	if hasAuthUser {
-		rows, err = db.Query(QUERY, authUserId)
+		rows, err = db.Query(query, authUserId, search, search)
 	} else {
-		rows, err = db.Query(QUERY, nil)
+		rows, err = db.Query(query, nil, search, search)
 	}
 	if err != nil {
 		return err

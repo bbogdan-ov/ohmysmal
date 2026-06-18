@@ -54,8 +54,25 @@ func (h Handler) handleHome(w http.ResponseWriter, r *http.Request) {
 	session := h.DefaultSession(r)
 	user, authed := h.authorizedUserOrFalse(session)
 
+	sort := r.URL.Query().Get("sort")
+	order := r.URL.Query().Get("order")
+	search := r.URL.Query().Get("search")
+	if len(search) > consts.MAX_SNIPPET_TITLE_LEN {
+		// Yep, it works on the level of bytes, i don't care because i didn't
+		// find a way to slice a string by a rune index.
+		search = search[:consts.MAX_SNIPPET_TITLE_LEN]
+	}
+
 	snippets := make([]server.Snippet, 0, 20)
-	err := server.RequestSnippets(h.db, &snippets, user.Id, authed)
+	err := server.RequestSnippets(
+		h.db,
+		&snippets,
+		user.Id,
+		authed,
+		sort,
+		order,
+		search,
+	)
 	if err != nil {
 		ErrorPage(w, r, err)
 		return
@@ -73,7 +90,14 @@ func (h Handler) handleHome(w http.ResponseWriter, r *http.Request) {
 	}
 	splash := splashes[rand.Int()%len(splashes)]
 
-	v := templ.Handler(view.HomePage(server.MaybeUser{User: user, Ok: authed}, snippets, splash))
+	v := templ.Handler(view.HomePage(
+		server.MaybeUser{User: user, Ok: authed},
+		snippets,
+		splash,
+		sort,
+		order,
+		search,
+	))
 	v.ServeHTTP(w, r)
 }
 

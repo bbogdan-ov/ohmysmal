@@ -21,7 +21,8 @@ const (
 )
 
 const (
-	USER_OK UserStatus = iota
+	USER_INVALID UserStatus = iota
+	USER_OK
 	USER_BANNED
 )
 
@@ -75,6 +76,54 @@ func InsertUser(db *sql.DB, ctx context.Context, nickname, password string) (id 
 
 	id64, err := result.LastInsertId()
 	return uint(id64), err
+}
+
+func BanOrUnbanUser(db *sql.DB, ctx context.Context, id uint, ban bool) (nickname string, err error) {
+	query := "UPDATE users SET status = 'ok' WHERE id = ?"
+	if ban {
+		query = "UPDATE users SET status = 'banned' WHERE id = ?"
+	}
+
+	// Do nothing if user doesn't exist or nothing changed.
+	_, err = db.ExecContext(ctx, query, id)
+
+	row := db.QueryRowContext(ctx, "SELECT nickname FROM users WHERE id = ?", id)
+	err = row.Scan(&nickname)
+	if err != nil {
+		return nickname, err
+	}
+
+	return nickname, err
+}
+
+func DeleteUserSnippetsAndComments(db *sql.DB, ctx context.Context, id uint) (nickname string, err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	row := tx.QueryRowContext(ctx, "SELECT nickname FROM users WHERE id = ?", id)
+	err = row.Scan(&nickname)
+	if err != nil {
+		return nickname, err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM snippets WHERE author_id = ?", id)
+	if err != nil {
+		return nickname, err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM comments WHERE author_id = ?", id)
+	if err != nil {
+		return nickname, err
+	}
+
+	return nickname, tx.Commit()
 }
 
 // --------------------
@@ -162,4 +211,7 @@ func (user User) CanDeleteSnippet(authorId uint) bool {
 }
 func (user User) CanDeleteComment(authorId uint) bool {
 	return user.Role == ROLE_ADMIN || authorId == user.Id
+}
+func (user User) CanBan(other User) bool {
+	return user.Role == ROLE_ADMIN && user.Id != other.Id
 }

@@ -98,19 +98,19 @@ func (h Handler) handleUser(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	snippets := make([]server.Snippet, 0)
+	var stats server.WebsiteStats
+
 	err = server.RequestSnippetsAuthored(h.db, ctx, &snippets, user.Id, authed.Id, is_authed)
 	if err != nil {
 		ErrorPage(w, r, err)
 		return
 	}
 
-	var stats server.WebsiteStats
-
 	row := h.db.QueryRowContext(ctx, `
-		SELECT COUNT(id)
-		FROM snippets
-		WHERE status = 'ok' AND author_id = ?
-	`, user.Id)
+			SELECT COUNT(id)
+			FROM snippets
+			WHERE status = 'ok' AND author_id = ?
+		`, user.Id)
 	row.Scan(&stats.SnippetsCount)
 
 	row = h.db.QueryRowContext(ctx, `SELECT COUNT(id) FROM comments WHERE author_id = ?`, user.Id)
@@ -365,6 +365,10 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) (err error) {
 		return ErrInvalid
 	}
 
+	if user.Status != server.USER_OK {
+		return server.BadRequestError{"You have been banned!"}
+	}
+
 	rememberUser(w, r, session, user.Id)
 
 	log.Printf("USERS: INFO: User successfully logged in: %d, %s", user.Id, user.Nickname)
@@ -446,6 +450,60 @@ func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 	delete(session.Values, USER_ID_SESSION_KEY)
 	_ = session.Save(r, w)
+}
+
+func (h Handler) HandleApiBan(w http.ResponseWriter, r *http.Request) {
+	h.handleApiBanOrUnban(w, r, true)
+}
+
+func (h Handler) HandleApiUnban(w http.ResponseWriter, r *http.Request) {
+	h.handleApiBanOrUnban(w, r, false)
+}
+
+func (h Handler) handleApiBanOrUnban(w http.ResponseWriter, r *http.Request, ban bool) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	id, err := UintPathValue(r, "id")
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	nickname, err := server.BanOrUnbanUser(h.db, ctx, id, ban)
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	Redirect(w, fmt.Sprintf("/@%s", nickname))
+}
+
+func (h Handler) HandleApiClear(w http.ResponseWriter, r *http.Request) {
+	if !EnsureMethod(w, r, "POST") {
+		return
+	}
+
+	id, err := UintPathValue(r, "id")
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	nickname, err := server.DeleteUserSnippetsAndComments(h.db, ctx, id)
+	if err != nil {
+		ErrorPage(w, r, err)
+		return
+	}
+
+	Redirect(w, fmt.Sprintf("/@%s", nickname))
 }
 
 // --------------------

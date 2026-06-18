@@ -39,8 +39,15 @@ func (h Handler) UserCacheMiddleware(handler http.HandlerFunc) http.HandlerFunc 
 		}
 
 		_, found := h.cache.Get(fmtUserCacheKey(userId))
-		if !found || methodUpdatesCache(r.Method) {
-			_ = h.updateUserCache(w, r, session)
+		updates := methodUpdatesCache(r.Method)
+		if !found || updates {
+			err := h.updateUserCache(w, r, session)
+			_, ok := err.(server.BadRequestError)
+			if updates && ok {
+				h.logout(w, r)
+				Error(w, err)
+				return
+			}
 		}
 
 		handler.ServeHTTP(w, r)
@@ -68,13 +75,10 @@ func (h Handler) updateUserCache(w http.ResponseWriter, r *http.Request, session
 
 	err = h.requestAndCacheUser(r, id)
 	if err == sql.ErrNoRows {
-		log.Printf("CACHE: WARNING: Authorized user was not found in the database when trying to update cache, destroying user's session")
-
 		delete(session.Values, USER_ID_SESSION_KEY)
 		_ = session.Save(r, w)
 		// fallthough
 	} else if err != nil {
-		log.Printf("CACHE: ERROR: Failed to cache authorized user info: %s", err)
 		return err
 	}
 
@@ -85,6 +89,10 @@ func (h Handler) requestAndCacheUser(r *http.Request, id uint) (err error) {
 	user, err := server.RequestUserById(r, h.db, id)
 	if err != nil {
 		return err
+	}
+
+	if user.Status != server.USER_OK {
+		return server.BadRequestError{"You have been banned!"}
 	}
 
 	h.cache.Set(fmtUserCacheKey(id), user, time.Minute)

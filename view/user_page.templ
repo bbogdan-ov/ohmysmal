@@ -20,11 +20,36 @@ templ UserPage(
 
 				<div class="user-info-wrapper">
 					<div class="user-info">
-						<h2>{"@"}{user.Nickname}</h2>
-						<span class="muted">
-							Registered&#160;
-							@TimeAgo(user.RegisterDate, "")
-						</span>
+						if user.Status == server.USER_BANNED {
+							<h2 class="text-red">Banned {"@"}{user.Nickname}</h2>
+						} else {
+							<h2>{"@"}{user.Nickname}</h2>
+						}
+
+						<div class="row gap-2">
+							<span class="muted">
+								registered&#160;
+								@TimeAgo(user.RegisterDate, "")
+							</span>
+
+							if authed.Ok && authed.User.CanBan(user) {
+								if user.Status == server.USER_OK {
+									<span
+										class="link-ish text-red"
+										hx-post={ fmt.Sprintf("/api/ban/%d", user.Id) }
+									>ban</span>
+								} else {
+									<span
+										class="link-ish"
+										hx-post={ fmt.Sprintf("/api/unban/%d", user.Id) }
+									>unban</span>
+									<span
+										class="link-ish text-red"
+										hx-post={ fmt.Sprintf("/api/clear/%d", user.Id) }
+									>delete all snippets and comments</span>
+								}
+							}
+						</div>
 					</div>
 				</div>
 
@@ -34,11 +59,13 @@ templ UserPage(
 					@WebsiteStat(stats.CommentsCount, "comments", "comments-stat.png")
 				</div>
 
-				<hr />
+				if len(snippets) > 0 {
+					<hr />
 
-				<h2>{user.Nickname}'s snippets</h2>
+					<h2>{user.Nickname}'s snippets</h2>
 
-				@Feed(snippets)
+					@Feed(snippets)
+				}
 
 				@footer()
 			</div>

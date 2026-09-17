@@ -5,7 +5,7 @@ Website i made as my college project.
 Write, run and post programs, games, visualizations and other fun stuff in my
 programming language [UXNSMAL] that runs on the [UXN] virtual machine.
 
-The compiler of [UNXSMAL] and the [UXN] VM run on the website using [WASM].
+The compiler of [UXNSMAL] and the [UXN] VM run on the website using [WASM].
 
 Visit [ohmysmal.fun], it should be available.
 
